@@ -1,75 +1,243 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.ccksy.loan.domain.product.mapper.LoanProductMapper">
 
-    <!-- =========================
-         Result Mapping
-         ========================= -->
-
-    <resultMap id="LoanProductResponseMap"
-               type="com.ccksy.loan.domain.product.dto.response.LoanProductResponse">
-
+    <resultMap id="LoanProductMap" type="com.ccksy.loan.domain.product.entity.LoanProduct">
         <id property="productId" column="product_id"/>
+        <result property="providerId" column="provider_id"/>
         <result property="productName" column="product_name"/>
-        <result property="bankName" column="bank_name"/>
-        <result property="interestRate" column="interest_rate"/>
-        <result property="maxLimit" column="max_limit"/>
-        <result property="loanType" column="loan_type"/>
-        <result property="createdAt" column="created_at"/>
+
+        <result property="productTypeCodeValueId" column="product_type_code_value_id"/>
+        <result property="loanTypeCodeValueId" column="loan_type_code_value_id"/>
+        <result property="repaymentTypeCodeValueId" column="repayment_type_code_value_id"/>
+        <result property="collateralTypeCodeValueId" column="collateral_type_code_value_id"/>
+        <result property="rateTypeCodeValueId" column="rate_type_code_value_id"/>
+
+        <result property="note" column="note"/>
+        <result property="addDate" column="add_date"/>
+        <result property="endDate" column="end_date"/>
+        <result property="updatedAt" column="updated_at"/>
+
+        <result property="providerName" column="provider_name"/>
+
+        <result property="rateId" column="rate_id"/>
+        <result property="rateBase" column="rate_base"/>
+        <result property="rateMin" column="rate_min"/>
+        <result property="rateMax" column="rate_max"/>
+        <result property="asOfDate" column="as_of_date"/>
     </resultMap>
 
-    <!-- =========================
-         대출 상품 목록 조회 (페이징)
-         ========================= -->
-    <select id="selectProducts"
-            resultMap="LoanProductResponseMap">
+    <!-- 공통: 최신 금리(rate)만 붙이기 -->
+    <sql id="LatestRateJoin">
+        LEFT JOIN (
+            SELECT pir1.*
+            FROM PRODUCT_INTEREST_RATE pir1
+            JOIN (
+                SELECT product_id, MAX(as_of_date) AS max_as_of_date
+                FROM PRODUCT_INTEREST_RATE
+                GROUP BY product_id
+            ) pir2 ON pir1.product_id = pir2.product_id
+              AND pir1.as_of_date = pir2.max_as_of_date
+        ) pir ON p.product_id = pir.product_id
+    </sql>
 
+    <select id="selectProducts" resultMap="LoanProductMap">
         SELECT
-            product_id,
-            product_name,
-            bank_name,
-            interest_rate,
-            max_limit,
-            loan_type,
-            created_at
-        FROM loan_product
-        ORDER BY created_at DESC
-        LIMIT #{size}
-        OFFSET #{offset}
+            p.product_id,
+            p.provider_id,
+            pr.provider_name,
+            p.product_name,
+            p.product_type_code_value_id,
+            p.loan_type_code_value_id,
+            p.repayment_type_code_value_id,
+            p.collateral_type_code_value_id,
+            p.rate_type_code_value_id,
+            p.note,
+            p.add_date,
+            p.end_date,
+            p.updated_at,
+            pir.rate_id,
+            pir.rate_base,
+            pir.rate_min,
+            pir.rate_max,
+            pir.as_of_date
+        FROM PRODUCT p
+        LEFT JOIN PROVIDER pr ON p.provider_id = pr.provider_id
+        <include refid="LatestRateJoin"/>
 
+        <where>
+            <if test="req.providerId != null">
+                AND p.provider_id = #{req.providerId}
+            </if>
+
+            <if test="req.productNameKeyword != null and req.productNameKeyword != ''">
+                AND LOWER(p.product_name) LIKE '%' || LOWER(#{req.productNameKeyword}) || '%'
+            </if>
+
+            <if test="req.productTypeCodeValueId != null and req.productTypeCodeValueId != ''">
+                AND p.product_type_code_value_id = #{req.productTypeCodeValueId}
+            </if>
+            <if test="req.loanTypeCodeValueId != null and req.loanTypeCodeValueId != ''">
+                AND p.loan_type_code_value_id = #{req.loanTypeCodeValueId}
+            </if>
+            <if test="req.repaymentTypeCodeValueId != null and req.repaymentTypeCodeValueId != ''">
+                AND p.repayment_type_code_value_id = #{req.repaymentTypeCodeValueId}
+            </if>
+            <if test="req.collateralTypeCodeValueId != null and req.collateralTypeCodeValueId != ''">
+                AND p.collateral_type_code_value_id = #{req.collateralTypeCodeValueId}
+            </if>
+            <if test="req.rateTypeCodeValueId != null and req.rateTypeCodeValueId != ''">
+                AND p.rate_type_code_value_id = #{req.rateTypeCodeValueId}
+            </if>
+
+            <if test="req.maxRateUpperBound != null">
+                AND (pir.rate_max IS NULL OR pir.rate_max &lt;= #{req.maxRateUpperBound})
+            </if>
+            <if test="req.minRateUpperBound != null">
+                AND (pir.rate_min IS NULL OR pir.rate_min &lt;= #{req.minRateUpperBound})
+            </if>
+        </where>
+
+        ORDER BY
+        <choose>
+            <when test="req.sortBy == 'rateMin'"> pir.rate_min </when>
+            <when test="req.sortBy == 'rateMax'"> pir.rate_max </when>
+            <when test="req.sortBy == 'productName'"> p.product_name </when>
+            <when test="req.sortBy == 'asOfDate'"> pir.as_of_date </when>
+            <otherwise> pir.rate_min </otherwise>
+        </choose>
+        <choose>
+            <when test="req.sortDir == 'DESC'"> DESC </when>
+            <otherwise> ASC </otherwise>
+        </choose>
+
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
     </select>
 
-    <!-- =========================
-         대출 상품 전체 건수 조회
-         ========================= -->
-    <select id="countProducts"
-            resultType="long">
-
-        SELECT COUNT(*)
-        FROM loan_product
-
+    <select id="countProducts" resultType="int">
+        SELECT COUNT(1)
+        FROM PRODUCT p
+        <include refid="LatestRateJoin"/>
+        <where>
+            <if test="req.providerId != null">
+                AND p.provider_id = #{req.providerId}
+            </if>
+            <if test="req.productNameKeyword != null and req.productNameKeyword != ''">
+                AND LOWER(p.product_name) LIKE '%' || LOWER(#{req.productNameKeyword}) || '%'
+            </if>
+            <if test="req.productTypeCodeValueId != null and req.productTypeCodeValueId != ''">
+                AND p.product_type_code_value_id = #{req.productTypeCodeValueId}
+            </if>
+            <if test="req.loanTypeCodeValueId != null and req.loanTypeCodeValueId != ''">
+                AND p.loan_type_code_value_id = #{req.loanTypeCodeValueId}
+            </if>
+            <if test="req.repaymentTypeCodeValueId != null and req.repaymentTypeCodeValueId != ''">
+                AND p.repayment_type_code_value_id = #{req.repaymentTypeCodeValueId}
+            </if>
+            <if test="req.collateralTypeCodeValueId != null and req.collateralTypeCodeValueId != ''">
+                AND p.collateral_type_code_value_id = #{req.collateralTypeCodeValueId}
+            </if>
+            <if test="req.rateTypeCodeValueId != null and req.rateTypeCodeValueId != ''">
+                AND p.rate_type_code_value_id = #{req.rateTypeCodeValueId}
+            </if>
+            <if test="req.maxRateUpperBound != null">
+                AND (pir.rate_max IS NULL OR pir.rate_max &lt;= #{req.maxRateUpperBound})
+            </if>
+            <if test="req.minRateUpperBound != null">
+                AND (pir.rate_min IS NULL OR pir.rate_min &lt;= #{req.minRateUpperBound})
+            </if>
+        </where>
     </select>
 
-    <!-- =========================
-         대출 상품 단건 조회
-         ========================= -->
-    <select id="selectProductById"
-            resultMap="LoanProductResponseMap">
-
+    <select id="selectProductDetail" resultMap="LoanProductMap">
         SELECT
-            product_id,
-            product_name,
-            bank_name,
-            interest_rate,
-            max_limit,
-            loan_type,
-            created_at
-        FROM loan_product
-        WHERE product_id = #{productId}
-
+            p.product_id,
+            p.provider_id,
+            pr.provider_name,
+            p.product_name,
+            p.product_type_code_value_id,
+            p.loan_type_code_value_id,
+            p.repayment_type_code_value_id,
+            p.collateral_type_code_value_id,
+            p.rate_type_code_value_id,
+            p.note,
+            p.add_date,
+            p.end_date,
+            p.updated_at,
+            pir.rate_id,
+            pir.rate_base,
+            pir.rate_min,
+            pir.rate_max,
+            pir.as_of_date
+        FROM PRODUCT p
+        LEFT JOIN PROVIDER pr ON p.provider_id = pr.provider_id
+        <include refid="LatestRateJoin"/>
+        WHERE p.product_id = #{productId}
     </select>
+
+    <!-- Oracle MERGE (내부 적재 파이프라인용) -->
+    <update id="upsertProduct">
+        MERGE INTO PRODUCT p
+        USING (
+            SELECT
+                #{p.productId} AS product_id,
+                #{p.providerId} AS provider_id,
+                #{p.productName} AS product_name,
+                #{p.productTypeCodeValueId} AS product_type_code_value_id,
+                #{p.loanTypeCodeValueId} AS loan_type_code_value_id,
+                #{p.repaymentTypeCodeValueId} AS repayment_type_code_value_id,
+                #{p.collateralTypeCodeValueId} AS collateral_type_code_value_id,
+                #{p.rateTypeCodeValueId} AS rate_type_code_value_id,
+                #{p.note} AS note,
+                #{p.endDate} AS end_date
+            FROM dual
+        ) s
+        ON (p.product_id = s.product_id)
+        WHEN MATCHED THEN UPDATE SET
+            p.provider_id = s.provider_id,
+            p.product_name = s.product_name,
+            p.product_type_code_value_id = s.product_type_code_value_id,
+            p.loan_type_code_value_id = s.loan_type_code_value_id,
+            p.repayment_type_code_value_id = s.repayment_type_code_value_id,
+            p.collateral_type_code_value_id = s.collateral_type_code_value_id,
+            p.rate_type_code_value_id = s.rate_type_code_value_id,
+            p.note = s.note,
+            p.end_date = s.end_date,
+            p.updated_at = SYSTIMESTAMP
+        WHEN NOT MATCHED THEN INSERT (
+            product_id, provider_id, product_name,
+            product_type_code_value_id, loan_type_code_value_id, repayment_type_code_value_id,
+            collateral_type_code_value_id, rate_type_code_value_id,
+            note, add_date, end_date, updated_at
+        ) VALUES (
+            s.product_id, s.provider_id, s.product_name,
+            s.product_type_code_value_id, s.loan_type_code_value_id, s.repayment_type_code_value_id,
+            s.collateral_type_code_value_id, s.rate_type_code_value_id,
+            s.note, SYSTIMESTAMP, s.end_date, SYSTIMESTAMP
+        )
+    </update>
+
+    <insert id="insertLatestRate">
+        INSERT INTO PRODUCT_INTEREST_RATE (
+            rate_id,
+            product_id,
+            rate_base,
+            rate_min,
+            rate_max,
+            as_of_date,
+            created_at
+        ) VALUES (
+            PRODUCT_INTEREST_RATE_SEQ.NEXTVAL,
+            #{p.productId},
+            #{p.rateBase},
+            #{p.rateMin},
+            #{p.rateMax},
+            #{p.asOfDate},
+            SYSTIMESTAMP
+        )
+    </insert>
 
 </mapper>
