@@ -1,68 +1,62 @@
 package com.ccksy.loan.domain.product.controller;
 
-import com.ccksy.loan.common.response.ApiResponse;
-import com.ccksy.loan.common.response.PageResponse;
+import com.ccksy.loan.domain.product.dto.request.LoanProductRequest;
 import com.ccksy.loan.domain.product.dto.response.LoanProductResponse;
 import com.ccksy.loan.domain.product.service.LoanProductService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import lombok.RequiredArgsConstructor;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-/**
- * 대출 상품 조회 Controller (Facade)
- *
- * 책임:
- * - HTTP 요청 수신
- * - Service 호출
- * - 공통 응답(ApiResponse)으로 감싸서 반환
- *
- * 원칙:
- * - 비즈니스 로직 없음
- * - 페이징 계산 없음
- * - 예외 처리 없음 (GlobalExceptionHandler 위임)
- */
 @RestController
-@RequiredArgsConstructor
-@RequestMapping("/api/products")
+@RequestMapping(LoanProductController.BASE_PATH)
 public class LoanProductController {
 
-    private final LoanProductService loanProductService;
+    private static final Logger log = LoggerFactory.getLogger(LoanProductController.class);
 
     /**
-     * 대출 상품 목록 조회 (페이징)
-     *
-     * 예시:
-     * GET /api/products?page=1&size=10
+     * 변동 후보(확인 필요):
+     * - 실제 외부 노출 path는 API 명세서에서 “상품 조회” 행이 본 캡처 구간에 없어서 확인이 안 됩니다.
+     * - 우선 v1 기본값으로 /api/products 를 잡아두고, 확정 시 BASE_PATH만 수정하면 됩니다.
      */
-    @GetMapping
-    public ApiResponse<PageResponse<LoanProductResponse>> getProducts(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
+    public static final String BASE_PATH = "/api/products";
 
-        PageResponse<LoanProductResponse> result =
-                loanProductService.getProducts(page, size);
+    private final LoanProductService service;
 
-        return ApiResponse.success(result);
+    public LoanProductController(LoanProductService service) {
+        this.service = service;
     }
 
-    /**
-     * 대출 상품 단건 조회
-     *
-     * 예시:
-     * GET /api/products/1001
-     */
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> list(LoanProductRequest req) {
+        int total = service.countProducts(req);
+        List<LoanProductResponse> items = service.listProducts(req);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("page", req.getPage());
+        body.put("size", req.getSize());
+        body.put("total", total);
+        body.put("items", items);
+
+        // 호출 후 “사용 자원” 짧게 출력
+        log.info("RESOURCE_USED: controller=LoanProductController action=list path={} spec={}", BASE_PATH, "SPEC-2026-01-29-v1");
+
+        return ResponseEntity.ok(body);
+    }
+
     @GetMapping("/{productId}")
-    public ApiResponse<LoanProductResponse> getProduct(
-            @PathVariable Long productId) {
+    public ResponseEntity<Map<String, Object>> detail(@PathVariable long productId) {
+        LoanProductResponse item = service.getProductDetail(productId);
 
-        LoanProductResponse result =
-                loanProductService.getProductById(productId);
+        Map<String, Object> body = new HashMap<>();
+        body.put("item", item);
 
-        return ApiResponse.success(result);
+        log.info("RESOURCE_USED: controller=LoanProductController action=detail path={}/{} spec={}", BASE_PATH, productId, "SPEC-2026-01-29-v1");
+
+        return ResponseEntity.ok(body);
     }
 }

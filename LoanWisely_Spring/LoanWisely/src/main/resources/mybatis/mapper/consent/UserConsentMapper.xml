@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccksy.loan.domain.consent.mapper.UserConsentMapper">
+
+    <resultMap id="UserConsentMap" type="com.ccksy.loan.domain.consent.entity.UserConsent">
+        <id property="consentId" column="consent_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="consentTypeCodeValueId" column="consent_type_code_value_id"/>
+        <result property="agreedYn" column="agreed_yn"/>
+        <result property="agreedAt" column="agreed_at"/>
+        <result property="expiredAt" column="expired_at"/>
+        <result property="purposeTagsPath" column="purpose_tags_path"/>
+        <result property="isActive" column="is_active"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.consent.entity.UserConsent" useGeneratedKeys="false">
+        <selectKey keyProperty="consentId" resultType="long" order="BEFORE">
+            SELECT user_consent_seq.NEXTVAL FROM dual
+        </selectKey>
+        INSERT INTO user_consent (
+            consent_id,
+            user_id,
+            consent_type_code_value_id,
+            agreed_yn,
+            agreed_at,
+            expired_at,
+            purpose_tags_path,
+            is_active
+        ) VALUES (
+            #{consentId},
+            #{userId},
+            #{consentTypeCodeValueId},
+            #{agreedYn},
+            #{agreedAt},
+            #{expiredAt},
+            #{purposeTagsPath},
+            #{isActive}
+        )
+    </insert>
+
+    <select id="findActiveByUserId" resultMap="UserConsentMap">
+        SELECT
+            consent_id,
+            user_id,
+            consent_type_code_value_id,
+            agreed_yn,
+            agreed_at,
+            expired_at,
+            purpose_tags_path,
+            is_active
+        FROM user_consent
+        WHERE user_id = #{userId}
+          AND is_active = 'Y'
+          AND expired_at > SYSTIMESTAMP
+        ORDER BY agreed_at DESC
+    </select>
+
+</mapper>

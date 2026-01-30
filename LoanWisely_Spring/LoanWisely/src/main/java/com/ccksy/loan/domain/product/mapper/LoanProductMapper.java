@@ -1,49 +1,25 @@
 package com.ccksy.loan.domain.product.mapper;
 
-import java.util.List;
-
+import com.ccksy.loan.domain.product.dto.request.LoanProductRequest;
+import com.ccksy.loan.domain.product.entity.LoanProduct;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import com.ccksy.loan.domain.product.dto.response.LoanProductResponse;
+import java.util.List;
 
-/**
- * 대출 상품 조회 MyBatis Mapper
- *
- * 책임:
- * - 대출 상품 목록 조회 SQL 호출
- * - 대출 상품 단건 조회 SQL 호출
- * - 전체 상품 건수 조회
- *
- * 주의:
- * - 비즈니스 로직 절대 금지
- * - 단순 SQL 호출 전용
- */
 @Mapper
 public interface LoanProductMapper {
 
-    /**
-     * 대출 상품 목록 조회 (페이징)
-     *
-     * @param offset 조회 시작 위치
-     * @param size   조회 개수
-     */
-    List<LoanProductResponse> selectProducts(
-            @Param("offset") int offset,
-            @Param("size") int size
-    );
+    List<LoanProduct> selectProducts(@Param("req") LoanProductRequest req,
+                                     @Param("offset") int offset,
+                                     @Param("limit") int limit);
 
-    /**
-     * 대출 상품 전체 건수 조회
-     */
-    long countProducts();
+    int countProducts(@Param("req") LoanProductRequest req);
 
-    /**
-     * 대출 상품 단건 조회
-     *
-     * @param productId 상품 ID
-     */
-    LoanProductResponse selectProductById(
-            @Param("productId") Long productId
-    );
+    LoanProduct selectProductDetail(@Param("productId") long productId);
+
+    // 내부관리(적재 파이프라인)에서 호출할 수 있도록 최소 upsert 제공
+    int upsertProduct(@Param("p") LoanProduct product);
+
+    int insertLatestRate(@Param("p") LoanProduct product);
 }

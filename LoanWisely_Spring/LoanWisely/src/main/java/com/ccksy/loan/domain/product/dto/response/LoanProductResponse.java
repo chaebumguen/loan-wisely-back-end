@@ -1,49 +1,71 @@
 package com.ccksy.loan.domain.product.dto.response;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-
-/**
- * 대출 상품 조회 응답 DTO
- *
- * 역할:
- * - 대출 상품 목록/단건 조회 시 클라이언트로 반환되는 데이터 모델
- * - 조회 전용(Read Model)
- *
- * 설계 원칙:
- * - 비즈니스 로직 포함 금지
- * - Entity와 분리 (조회 API 최적화)
- * - MyBatis ResultMap과 1:1 매핑
- */
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class LoanProductResponse {
 
-    /** 상품 ID */
     private Long productId;
+    private Long providerId;
+    private String providerName;
 
-    /** 상품명 */
     private String productName;
 
-    /** 금융기관명 */
-    private String bankName;
+    private String productTypeCodeValueId;
+    private String loanTypeCodeValueId;
+    private String repaymentTypeCodeValueId;
+    private String collateralTypeCodeValueId;
+    private String rateTypeCodeValueId;
 
-    /** 금리 (예: 3.5%) */
-    private BigDecimal interestRate;
+    private Double rateBase;
+    private Double rateMin;
+    private Double rateMax;
+    private LocalDate asOfDate;
 
-    /** 최대 한도 */
-    private Long maxLimit;
+    private String note;
+    private LocalDate endDate;
 
-    /** 대출 유형 (예: 신용대출, 전세자금대출 등) */
-    private String loanType;
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
 
-    /** 상품 등록일 */
-    private LocalDateTime createdAt;
+    public Long getProviderId() { return providerId; }
+    public void setProviderId(Long providerId) { this.providerId = providerId; }
+
+    public String getProviderName() { return providerName; }
+    public void setProviderName(String providerName) { this.providerName = providerName; }
+
+    public String getProductName() { return productName; }
+    public void setProductName(String productName) { this.productName = productName; }
+
+    public String getProductTypeCodeValueId() { return productTypeCodeValueId; }
+    public void setProductTypeCodeValueId(String productTypeCodeValueId) { this.productTypeCodeValueId = productTypeCodeValueId; }
+
+    public String getLoanTypeCodeValueId() { return loanTypeCodeValueId; }
+    public void setLoanTypeCodeValueId(String loanTypeCodeValueId) { this.loanTypeCodeValueId = loanTypeCodeValueId; }
+
+    public String getRepaymentTypeCodeValueId() { return repaymentTypeCodeValueId; }
+    public void setRepaymentTypeCodeValueId(String repaymentTypeCodeValueId) { this.repaymentTypeCodeValueId = repaymentTypeCodeValueId; }
+
+    public String getCollateralTypeCodeValueId() { return collateralTypeCodeValueId; }
+    public void setCollateralTypeCodeValueId(String collateralTypeCodeValueId) { this.collateralTypeCodeValueId = collateralTypeCodeValueId; }
+
+    public String getRateTypeCodeValueId() { return rateTypeCodeValueId; }
+    public void setRateTypeCodeValueId(String rateTypeCodeValueId) { this.rateTypeCodeValueId = rateTypeCodeValueId; }
+
+    public Double getRateBase() { return rateBase; }
+    public void setRateBase(Double rateBase) { this.rateBase = rateBase; }
+
+    public Double getRateMin() { return rateMin; }
+    public void setRateMin(Double rateMin) { this.rateMin = rateMin; }
+
+    public Double getRateMax() { return rateMax; }
+    public void setRateMax(Double rateMax) { this.rateMax = rateMax; }
+
+    public LocalDate getAsOfDate() { return asOfDate; }
+    public void setAsOfDate(LocalDate asOfDate) { this.asOfDate = asOfDate; }
+
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
+
+    public LocalDate getEndDate() { return endDate; }
+    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
 }
