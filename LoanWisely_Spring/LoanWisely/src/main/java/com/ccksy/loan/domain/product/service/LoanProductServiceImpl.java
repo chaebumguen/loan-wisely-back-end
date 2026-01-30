@@ -102,8 +102,8 @@ public class LoanProductServiceImpl implements LoanProductService {
 
         if (product == null) {
             throw new BusinessException(
-                    ErrorCode.NOT_FOUND,
-                    "해당 대출 상품을 찾을 수 없습니다."
+                    ErrorCode.PRODUCT_NOT_AVAILABLE,
+                    "현재 이용 가능한 상품이 없습니다."
             );
         }
 
