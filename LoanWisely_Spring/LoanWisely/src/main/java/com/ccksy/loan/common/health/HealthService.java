@@ -1,17 +1,16 @@
 package com.ccksy.loan.common.health;
 
 /**
- * Health Check Service
+ * Health 판단 책임 인터페이스
  *
- * - 애플리케이션 상태 확인 책임
- * - 이후 DB, 외부 시스템 상태 체크 확장 가능
+ * 원칙:
+ * - Controller는 판단하지 않는다
+ * - Health 판단 기준은 Service에서 단일화
  */
 public interface HealthService {
 
     /**
-     * 애플리케이션 상태 확인
-     *
-     * @return 상태 문자열 (ex: OK)
+     * @return 상태 문자열 ("UP" / "DOWN")
      */
     String check();
 }

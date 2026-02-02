@@ -41,6 +41,10 @@ dependencies {
 	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:4.0.1'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	
+	// BG 260130 JacksonConfig.java : import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+	// 의존성 문제로 추가
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+	
 	// Source: https://mvnrepository.com/artifact/com.oracle/ojdbc14
 	implementation 'com.oracle:ojdbc14:10.2.0.3.0'
 }

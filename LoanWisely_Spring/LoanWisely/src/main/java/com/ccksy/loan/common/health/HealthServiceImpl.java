@@ -3,15 +3,17 @@ package com.ccksy.loan.common.health;
 import org.springframework.stereotype.Service;
 
 /**
- * Health Check Service 구현체
+ * Version 1 Health 판단 구현체
+ *
+ * 판단 기준:
+ * - 애플리케이션 프로세스 정상 동작 여부만 판단
+ * - DB / 외부 API / Engine 의존성은 readiness에서 처리
  */
 @Service
 public class HealthServiceImpl implements HealthService {
 
     @Override
     public String check() {
-        // 현재는 단순 서버 기동 여부만 확인
-        // 추후 DB, Redis, 외부 API 상태 체크 가능
-        return "OK";
+        return "UP";
     }
 }

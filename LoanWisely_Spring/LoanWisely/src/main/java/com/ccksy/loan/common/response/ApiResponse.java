@@ -1,72 +1,85 @@
 package com.ccksy.loan.common.response;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
-import com.ccksy.loan.common.exception.ErrorCode;
-
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
-@Getter
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-//생성자를 외부에서 직접 호출하지 못하도록 제한
-//→ 반드시 success() / error() 팩토리 메서드만 사용하게 강제
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-//Jackson 역직렬화 및 상속 대비용 기본 생성자
-//→ 외부 new 호출은 불가
+/**
+ * 전 API 공통 응답 Wrapper
+ *
+ * 설계 원칙:
+ * - 모든 API는 동일한 응답 구조를 가진다
+ * - 성공/실패 여부를 payload 외부에서 명확히 구분
+ * - 내부 상태/로직/스택트레이스 절대 노출 금지
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
 
-    private boolean success;        // 성공 여부
-    private String code;            // SUCCESS 또는 ErrorCode
-    private String message;         // 응답 메시지
-    private T data;                 // 실제 응답 데이터
-    private LocalDateTime timestamp;
+    private final boolean success;
+    private final T data;
+    private final ErrorResponse error;
 
-    /* =========================
-     * Success Response
-     * ========================= */
+    private ApiResponse(boolean success, T data, ErrorResponse error) {
+        this.success = success;
+        this.data = data;
+        this.error = error;
+    }
+
+    /** 성공 응답 */
     public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<>(
-                true,
-                "SUCCESS",
-                "요청이 정상 처리되었습니다.",
-                data,
-                LocalDateTime.now()
-        );
+        return new ApiResponse<>(true, data, null);
     }
 
-    public static <T> ApiResponse<T> success(String message, T data) {
-        return new ApiResponse<>(
-                true,
-                "SUCCESS",
-                message,
-                data,
-                LocalDateTime.now()
-        );
+    /** 실패 응답(기본) */
+    public static ApiResponse<Void> failure(String code, String message) {
+        return new ApiResponse<>(false, null, new ErrorResponse(code, message, null));
     }
 
-    /* =========================
-     * Error Response
-     * ========================= */
-    public static <T> ApiResponse<T> error(ErrorCode errorCode) {
-        return new ApiResponse<>(
-                false,
-                errorCode.getCode(),
-                errorCode.getMessage(),
-                null,
-                LocalDateTime.now()
-        );
+    /**
+     * 실패 응답(상세 포함) - 예: 필드 검증 오류 Map 등
+     * - rejectedValue, stackTrace, SQL 등 내부값은 절대 담지 마세요.
+     */
+    public static ApiResponse<Object> failure(String code, String message, Object details) {
+        return new ApiResponse<>(false, null, new ErrorResponse(code, message, details));
     }
 
-    public static <T> ApiResponse<T> error(ErrorCode errorCode, String customMessage) {
-        return new ApiResponse<>(
-                false,
-                errorCode.getCode(),
-                customMessage,
-                null,
-                LocalDateTime.now()
-        );
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public T getData() {
+        return data;
+    }
+
+    public ErrorResponse getError() {
+        return error;
+    }
+
+    /**
+     * 오류 정보 최소 단위
+     * - 내부 예외, 클래스명, SQL, StackTrace 절대 포함 금지
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class ErrorResponse {
+
+        private final String code;
+        private final String message;
+        private final Object details; // 선택: 필드 에러 등(내부값 금지)
+
+        private ErrorResponse(String code, String message, Object details) {
+            this.code = code;
+            this.message = message;
+            this.details = details;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public Object getDetails() {
+            return details;
+        }
     }
 }
