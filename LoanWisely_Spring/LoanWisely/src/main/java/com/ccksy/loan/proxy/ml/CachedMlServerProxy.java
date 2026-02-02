@@ -1,6 +1,6 @@
 package com.ccksy.loan.proxy.ml;
 
-import com.ccksy.loan.ml.MIServerHttpClient;
+import com.ccksy.loan.ml.MlServerHttpClient;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -13,11 +13,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * - 캐시 책임만 추가
  */
 @Component
-public class CachedMIServerProxy extends MIServerProxy {
+public class CachedMlServerProxy extends MlServerProxy {
 
     private final Map<String, String> cache = new ConcurrentHashMap<>();
 
-    public CachedMIServerProxy(MIServerHttpClient httpClient) {
+    public CachedMlServerProxy(MlServerHttpClient httpClient) {
         super(httpClient);
     }
 

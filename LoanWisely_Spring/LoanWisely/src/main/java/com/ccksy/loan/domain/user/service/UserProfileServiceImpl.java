@@ -1,74 +1,45 @@
+// FILE: domain/user/service/UserProfileServiceImpl.java
 package com.ccksy.loan.domain.user.service;
 
-import com.ccksy.loan.domain.user.dto.request.UserProfileRequest;
-import com.ccksy.loan.domain.user.dto.response.UserProfileResponse;
-import com.ccksy.loan.domain.user.entity.UserProfile;
-import com.ccksy.loan.domain.user.mapper.UserProfileMapper;
-import com.ccksy.loan.domain.user.state.UserState;
+import java.util.Objects;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import com.ccksy.loan.domain.user.dto.response.UserProfileResponse;
 
+/**
+ * UserProfileService 구현체 (v1)
+ *
+ * v1 정책 반영:
+ * - LV1 필드는 항상 반환 대상
+ * - LV2/LV3는 저장/동의/정책 상태에 따라 null일 수 있음
+ * - Response DTO에는 예외를 던지지 않음
+ *
+ * NOTE:
+ * - 실제 데이터 조회는 Mapper/Repository로 교체되어야 함
+ * - v1에서는 구조/책임 정합에 집중
+ */
 @Service
 public class UserProfileServiceImpl implements UserProfileService {
 
-    private final UserProfileMapper userProfileMapper;
-    private final UserState userState;
-
-    public UserProfileServiceImpl(
-            UserProfileMapper userProfileMapper,
-            UserState userState
-    ) {
-        this.userProfileMapper = userProfileMapper;
-        this.userState = userState;
-    }
-
-    @Override
-    @Transactional
-    public UserProfileResponse upsert(UserProfileRequest request) {
-        // 상태 전이/입력 허용 여부 판단은 State 객체에 위임
-        userState.handle(request);
-
-        UserProfile profile = new UserProfile();
-        // 값 매핑 (판단/분기 없음)
-        // MyBatis 매핑 기준으로 필드 설정
-        // 예: profile.setAge(request.getAge()) 등
-
-        userProfileMapper.insert(profile);
-
-        return toResponse(profile);
+    public UserProfileServiceImpl() {
+        // 실제 구현에서는 UserProfileMapper / Repository 주입
     }
 
     @Override
     @Transactional(readOnly = true)
-    public UserProfileResponse get(Long versionId) {
-        UserProfile profile =
-                (versionId == null)
-                        ? userProfileMapper.selectLatestValidByUserId(getCurrentUserId())
-                        : userProfileMapper.selectByUserIdAndVersion(getCurrentUserId(), versionId);
+    public UserProfileResponse getUserProfile(Long userId) {
+        Objects.requireNonNull(userId, "userId must not be null.");
 
-        return toResponse(profile);
-    }
+        // TODO: 실제 조회 로직은 영속계층으로 대체
+        // v1 기본 동작: 조회 결과가 없더라도 Response 계약은 유지
+        UserProfileResponse response = new UserProfileResponse();
+        response.setUserId(userId);
 
-    private UserProfileResponse toResponse(UserProfile profile) {
-        return new UserProfileResponse(
-                profile.getProfileVersionId(),
-                profile.getAge(),
-                profile.getIncomeYear(),
-                profile.getGender(),
-                profile.getEmploymentType(),
-                profile.getResidenceType(),
-                profile.getLoanPurpose(),
-                profile.getTotalDebt(),
-                profile.getExistingLoanCount(),
-                profile.getCreatedAt(),
-                profile.isJudgable()
-        );
-    }
+        // LV1/LV2/LV3는 정책/동의 상태에 따라 세팅될 수 있음
+        // (여기서는 예시로 null 유지)
 
-    private Long getCurrentUserId() {
-        // 인증 컨텍스트에서 추출 (구현 위치 고정)
-        return 0L;
+        return response;
     }
 }

@@ -1,3 +1,4 @@
+// FILE: domain/recommend/policy/scoring/PurposeScoreStrategy.java
 package com.ccksy.loan.domain.recommend.policy.scoring;
 
 import java.util.Objects;
@@ -6,31 +7,38 @@ import com.ccksy.loan.domain.recommend.dto.internal.RecommendContext;
 import com.ccksy.loan.domain.recommend.result.core.RecommendItem;
 
 /**
- * 대출 목적 기반 점수 전략
+ * (Strategy) 대출 목적 적합도 점수 (v1)
  *
- * <p>사용자 목적과 상품 목적 태그의 일치 정도를 기준으로 점수 산정</p>
+ * - ctx.options["loanPurpose"] 와 상품의 목적 코드/문자열이 일치하면 가점
+ * - 목적 정보가 없으면 0점(결측은 불리/유리로 치우치지 않도록 중립 처리)
  */
-public class PurposeScoreStrategy implements ScoreStrategy {
+public final class PurposeScoreStrategy implements ScoreStrategy {
+
+    // v1 고정 키(RecommendContext.options)
+    private static final String OPT_LOAN_PURPOSE = "loanPurpose";
 
     @Override
-    public double score(RecommendContext context, RecommendItem item) {
-        Objects.requireNonNull(context, "RecommendContext must not be null.");
-        Objects.requireNonNull(item, "RecommendItem must not be null.");
-
-        if (context.getPurpose() == null || item.getPurposeTags() == null) {
-            return 0.0;
-        }
-
-        // 목적 완전 일치 시 가중치
-        if (item.getPurposeTags().contains(context.getPurpose())) {
-            return 30.0;
-        }
-
-        return 0.0;
+    public String id() {
+        return "PurposeScoreStrategy:v1";
     }
 
     @Override
-    public String getStrategyName() {
-        return "PURPOSE_SCORE";
+    public double score(RecommendContext ctx, RecommendItem item) {
+        Objects.requireNonNull(ctx, "ctx");
+        Objects.requireNonNull(item, "item");
+
+        String userPurpose = ScoreStrategyUtil.optText(ctx, OPT_LOAN_PURPOSE);
+        if (userPurpose == null) return 0.0d;
+
+        // 상품 목적 추출: getLoanPurpose / getPurpose / getPurposeCode / getLoanPurposeCode 순서로 시도
+        String itemPurpose =
+                ScoreStrategyUtil.tryGetText(item, "getLoanPurpose",
+                        "getPurpose",
+                        "getPurposeCode",
+                        "getLoanPurposeCode");
+
+        if (itemPurpose == null) return 0.0d;
+
+        return ScoreStrategyUtil.equalsIgnoreSpace(userPurpose, itemPurpose) ? 1.0d : 0.0d;
     }
 }

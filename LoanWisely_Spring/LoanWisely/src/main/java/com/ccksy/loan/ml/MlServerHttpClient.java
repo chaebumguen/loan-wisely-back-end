@@ -10,11 +10,11 @@ import org.springframework.web.client.RestTemplate;
  * - 비즈니스/도메인/판단 로직 절대 포함 금지
  */
 @Component
-public class MIServerHttpClient {
+public class MlServerHttpClient {
 
     private final RestTemplate restTemplate;
 
-    public MIServerHttpClient(RestTemplate restTemplate) {
+    public MlServerHttpClient(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 

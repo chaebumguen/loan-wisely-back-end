@@ -1,6 +1,6 @@
 package com.ccksy.loan.proxy.ml;
 
-import com.ccksy.loan.ml.MIServerHttpClient;
+import com.ccksy.loan.ml.MlServerHttpClient;
 import org.springframework.stereotype.Component;
 
 /**
@@ -10,11 +10,11 @@ import org.springframework.stereotype.Component;
  * - 기술적 보조만 수행
  */
 @Component
-public class MIServerProxy {
+public class MlServerProxy {
 
-    protected final MIServerHttpClient httpClient;
+    protected final MlServerHttpClient httpClient;
 
-    public MIServerProxy(MIServerHttpClient httpClient) {
+    public MlServerProxy(MlServerHttpClient httpClient) {
         this.httpClient = httpClient;
     }
 
