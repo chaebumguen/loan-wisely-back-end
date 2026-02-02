@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * - MIServerProxy 확장
  * - 캐시 책임만 추가
  */
-@Component
+//@Component
 public class CachedMlServerProxy extends MlServerProxy {
 
     private final Map<String, String> cache = new ConcurrentHashMap<>();

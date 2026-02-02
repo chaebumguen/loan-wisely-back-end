@@ -1,22 +1,19 @@
 package com.ccksy.loan.common.config;
 
-import com.ccksy.loan.common.response.ApiResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.http.MediaType;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.web.*;
-import org.springframework.security.web.access.AccessDeniedHandler;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+import com.ccksy.loan.common.response.ApiResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.http.HttpServletResponse;
+
 
 /**
  * SecurityConfig (Version 1)
@@ -30,7 +27,7 @@ import java.nio.charset.StandardCharsets;
  * - OAuth/JWT 발급/검증 인프라가 확정되지 않은 상태에서도 컴파일/기동 가능한 수준으로 구성합니다.
  * - 실제 JWT claim → 권한 매핑은 추후 Converter로 확장 가능합니다.
  */
-@Configuration
+//@Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
@@ -47,12 +44,12 @@ public class SecurityConfig {
             ))
 
             // 인증 실패/인가 실패 응답 표준화(내부 정보 노출 방지)
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((request, response, authException) ->
-                        writeAuthError(response, objectMapper, 401, "UNAUTHORIZED", authException))
-                .accessDeniedHandler((request, response, accessDeniedException) ->
-                        writeAccessDenied(response, objectMapper, 403, "FORBIDDEN"))
-            )
+//            .exceptionHandling(ex -> ex
+//                .authenticationEntryPoint((request, response, authException) ->
+//                        writeAuthError(response, objectMapper, 401, "UNAUTHORIZED", authException))
+//                .accessDeniedHandler((request, response, accessDeniedException) ->
+//                        writeAccessDenied(response, objectMapper, 403, "FORBIDDEN"))
+//            )
 
             // 경로별 접근 제어
             .authorizeHttpRequests(auth -> auth

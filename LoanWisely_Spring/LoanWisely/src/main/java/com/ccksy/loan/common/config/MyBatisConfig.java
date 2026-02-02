@@ -1,22 +1,32 @@
 // FILE: common/config/MyBatisConfig.java
 package com.ccksy.loan.common.config;
 
+import javax.sql.DataSource;
+
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.session.SqlSessionFactory;
+
+import org.mybatis.spring.SqlSessionFactoryBean;
+import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
+
+import org.mybatis.spring.boot.autoconfigure.ConfigurationCustomizer;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * MyBatisConfig (v1) - FIX
  *
- * 핵심:
- * - MapperScan 범위를 domain 전체로 두면 service/strategy/state 같은 인터페이스까지
- *   MyBatis Mapper로 오인 등록되어 동일 타입 Bean이 2개 생기는 장애가 발생한다.
+ * 목적:
+ * - MapperScan 범위를 mapper 패키지로만 제한 (service/strategy 오인 스캔 방지)
+ * - SqlSessionFactory / SqlSessionTemplate 을 명시적으로 제공하여
+ *   "Property 'sqlSessionFactory' or 'sqlSessionTemplate' are required" 오류를 방지
  *
- * 원칙:
- * - MapperScan은 mapper 패키지로만 제한한다.
- * - annotationClass=Mapper 로 "진짜 MyBatis Mapper(@Mapper)"만 스캔하도록 강제한다.
+ * 전제:
+ * - DataSource는 반드시 존재해야 함 (DB 연결 설정 필요)
  */
-@Configuration
+//@Configuration
 @MapperScan(
         basePackages = {
                 "com.ccksy.loan.domain.user.mapper",
@@ -27,10 +37,41 @@ import org.springframework.context.annotation.Configuration;
         annotationClass = Mapper.class
 )
 public class MyBatisConfig {
+
     /**
-     * (Version 1)
-     * - MyBatis-SpringBoot-Starter 전제
-     * - MapperScan만 고정
-     * - SqlSessionFactory, TypeHandler 등은 별도 설정(예: mybatis/TypeHandlerConfig)에서 확장
+     * SqlSessionFactory 명시 제공
+     * - MyBatis-SpringBoot-Starter 자동구성이 동작하지 않거나,
+     *   커스텀 구성으로 인해 factory/template이 누락되는 상황을 차단
+     *
+     * - ConfigurationCustomizer(예: TypeHandlerConfig에서 등록한 TypeHandler 등)를 적용
      */
+    @Bean
+    public SqlSessionFactory sqlSessionFactory(
+            DataSource dataSource,
+            ObjectProvider<ConfigurationCustomizer> customizers
+    ) throws Exception {
+
+        SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
+        factoryBean.setDataSource(dataSource);
+
+        // 커스터마이저 적용(타입핸들러, 설정 등)
+        org.apache.ibatis.session.Configuration mybatisCfg = new org.apache.ibatis.session.Configuration();
+        customizers.orderedStream().forEach(c -> c.customize(mybatisCfg));
+        factoryBean.setConfiguration(mybatisCfg);
+
+        SqlSessionFactory factory = factoryBean.getObject();
+        if (factory == null) {
+            throw new IllegalStateException("Failed to create SqlSessionFactory (factoryBean.getObject() returned null).");
+        }
+        return factory;
+    }
+
+    /**
+     * SqlSessionTemplate 명시 제공
+     * - MapperFactoryBean이 주입받는 핵심 대상
+     */
+    @Bean
+    public SqlSessionTemplate sqlSessionTemplate(SqlSessionFactory sqlSessionFactory) {
+        return new SqlSessionTemplate(sqlSessionFactory);
+    }
 }

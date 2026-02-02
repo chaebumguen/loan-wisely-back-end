@@ -9,7 +9,7 @@ import org.springframework.web.client.RestTemplate;
  * - 외부 MI 서버와의 통신 전용
  * - 비즈니스/도메인/판단 로직 절대 포함 금지
  */
-@Component
+//@Component
 public class MlServerHttpClient {
 
     private final RestTemplate restTemplate;

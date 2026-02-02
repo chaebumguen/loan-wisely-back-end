@@ -1,6 +1,13 @@
 spring:
+  application:
+    name: loan-wisely
+
   datasource:
-    driver-class-name: oracle.jdbc.OracleDriver
-    url: jdbc:oracle:thin@localhost:1521/XE
-    username: TEAM_PROJECT_PROTO
-    password: TEAM_PROTO
+    driver-class-name: oracle.jdbc.driver.OracleDriver
+    url: jdbc:oracle:thin:@localhost:1521/XE
+    username: C##KH
+    password: KH
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true

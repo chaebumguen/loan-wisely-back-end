@@ -29,7 +29,7 @@ import org.springframework.context.annotation.Bean;
  * - 본 클래스는 TypeHandler 등록만 수행한다.
  * - @MapperScan 절대 금지 (service/strategy 등을 mapper로 오인 등록하는 장애 재발 방지)
  */
-@org.springframework.context.annotation.Configuration
+//@org.springframework.context.annotation.Configuration
 public class TypeHandlerConfig {
 
     /**

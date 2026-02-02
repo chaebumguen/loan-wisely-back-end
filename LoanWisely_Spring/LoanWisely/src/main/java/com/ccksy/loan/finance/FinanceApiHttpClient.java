@@ -8,7 +8,7 @@ import org.springframework.web.client.RestTemplate;
  * - 기술적 통신 책임만 보유
  * - 비즈니스/도메인 해석 절대 금지
  */
-@Component
+//@Component
 public class FinanceApiHttpClient {
 
     private final RestTemplate restTemplate;

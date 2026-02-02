@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
  * - 외부 MI 서버 호출의 기본 Proxy
  * - 기술적 보조만 수행
  */
-@Component
+//@Component
 public class MlServerProxy {
 
     protected final MlServerHttpClient httpClient;
