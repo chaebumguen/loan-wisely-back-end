@@ -1,5 +1,17 @@
 package com.ccksy.loan.domain.recommend.state;
 
-public class NotReadyState {
+import com.ccksy.loan.domain.recommend.dto.request.RecommendRequest;
 
+public class NotReadyState implements RecommendState {
+
+    @Override
+    public RecommendState handle(RecommendRequest request) {
+        // 추가 입력 필요 → 상태 유지
+        return this;
+    }
+
+    @Override
+    public String code() {
+        return "NOT_READY";
+    }
 }
