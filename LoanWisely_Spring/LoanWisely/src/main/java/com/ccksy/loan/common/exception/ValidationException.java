@@ -1,26 +1,22 @@
 package com.ccksy.loan.common.exception;
 
-import lombok.Getter;
+import java.util.Collections;
+import java.util.Map;
 
 /**
- * 입력값 검증 실패 시 사용하는 예외
- *
- * - DTO 검증(@Valid) 이후
- * - 비즈니스 로직 진입 전/중 검증 실패 표현
- * - 컨트롤러에서는 절대 처리하지 않는다
+ * 요청값 검증 실패를 명시적으로 구분.
+ * - fieldErrors는 외부에 노출될 수 있으므로 민감정보를 넣지 말 것.
  */
-@Getter
-public class ValidationException extends RuntimeException {
+public class ValidationException extends BusinessException {
 
-    private final ErrorCode errorCode;
+    private final Map<String, String> fieldErrors;
 
-    public ValidationException(ErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
+    public ValidationException(Map<String, String> fieldErrors) {
+        super(ErrorCode.COMMON_VALIDATION_FAILED);
+        this.fieldErrors = fieldErrors == null ? Collections.emptyMap() : Collections.unmodifiableMap(fieldErrors);
     }
 
-    public ValidationException(ErrorCode errorCode, String customMessage) {
-        super(customMessage);
-        this.errorCode = errorCode;
+    public Map<String, String> getFieldErrors() {
+        return fieldErrors;
     }
 }

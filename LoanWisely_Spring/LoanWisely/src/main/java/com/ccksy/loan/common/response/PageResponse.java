@@ -2,71 +2,40 @@ package com.ccksy.loan.common.response;
 
 import java.util.List;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
 /**
- * 페이징 응답 전용 래퍼
+ * 페이징 전용 응답 객체
  *
- * - 목록 조회 API에서만 사용
- * - ApiResponse와 분리하여 책임을 명확히 한다
- * - Page<T> / Slice<T> / MyBatis 페이징 결과를 감싸는 용도
+ * 책임:
+ * - 목록 + 페이지 메타데이터 전달
+ * - 정렬 기준, 검색 로직, 필터 조건은 포함하지 않음
  */
-@Getter
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-//생성자를 외부에서 직접 호출하지 못하도록 제한
-//→ 반드시 정적 팩토리 메서드(of, success 등)만 사용하게 강제
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-//Jackson 역직렬화 및 프레임워크 내부 사용을 위한 기본 생성자
-//→ 외부 new 호출은 차단
 public class PageResponse<T> {
 
-    /** 실제 데이터 목록 */
-    private List<T> items;
+    private final List<T> items;
+    private final int page;
+    private final int size;
+    private final long totalCount;
 
-    /** 전체 데이터 개수 */
-    private long totalCount;
-
-    /** 현재 페이지 번호 (0-based or 1-based는 API 기준에 따름) */
-    private int page;
-
-    /** 페이지 크기 */
-    private int size;
-
-    /** 전체 페이지 수 */
-    private int totalPages;
-
-    /* =========================
-     * Factory Methods
-     * ========================= */
-
-    public static <T> PageResponse<T> of(
-            List<T> items,
-            long totalCount,
-            int page,
-            int size) {
-
-        int totalPages = calculateTotalPages(totalCount, size);
-
-        return new PageResponse<>(
-                items,
-                totalCount,
-                page,
-                size,
-                totalPages
-        );
+    public PageResponse(List<T> items, int page, int size, long totalCount) {
+        this.items = items;
+        this.page = page;
+        this.size = size;
+        this.totalCount = totalCount;
     }
 
-    /* =========================
-     * Internal Utils
-     * ========================= */
+    public List<T> getItems() {
+        return items;
+    }
 
-    private static int calculateTotalPages(long totalCount, int size) {
-        if (size <= 0) {
-            return 0;
-        }
-        return (int) Math.ceil((double) totalCount / size);
+    public int getPage() {
+        return page;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public long getTotalCount() {
+        return totalCount;
     }
 }

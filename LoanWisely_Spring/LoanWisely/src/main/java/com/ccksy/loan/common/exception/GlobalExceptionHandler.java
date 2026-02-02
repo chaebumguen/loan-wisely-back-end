@@ -1,117 +1,82 @@
 package com.ccksy.loan.common.exception;
 
 import com.ccksy.loan.common.response.ApiResponse;
-
-import jakarta.validation.ConstraintViolationException;
-
-import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.http.HttpStatus;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
- * 전역 예외 처리 핸들러
- *
- * - Controller에서는 예외를 직접 처리하지 않는다.
- * - 모든 예외는 여기서 ApiResponse 형태로 변환된다.
- * - 에러 응답 포맷을 강제하여 API 응답 일관성을 유지한다.
+ * Version 1: 표준 오류 응답 제공
+ * - 내부 정보 노출 방지(74)
+ * - 오류 응답 일관성(75)
+ * - 감사/추적을 위한 서버 로그는 남기되, 외부 응답은 최소화
  */
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /* =========================
-     * Business Exception
-     * ========================= */
-
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusinessException(
-            BusinessException ex) {
-
-        log.warn("[BUSINESS_EXCEPTION] code={}, message={}",
-                ex.getErrorCode().getCode(),
-                ex.getMessage());
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getErrorCode(), ex.getMessage()));
-    }
-
-    /* =========================
-     * Validation Exception (Custom)
-     * ========================= */
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ValidationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleValidationException(
-            ValidationException ex) {
-
-        log.warn("[VALIDATION_EXCEPTION] code={}, message={}",
-                ex.getErrorCode().getCode(),
-                ex.getMessage());
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getErrorCode(), ex.getMessage()));
+    public ResponseEntity<ApiResponse<Object>> handleValidationException(ValidationException ex) {
+        ErrorCode ec = ex.getErrorCode();
+        ApiResponse<Object> body = ApiResponse.failure(ec.getCode(), ec.getMessage(), ex.getFieldErrors());
+        return ResponseEntity.status(ec.getHttpStatus()).body(body);
     }
 
-    /* =========================
-     * @Valid DTO 검증 실패
-     * ========================= */
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
+        ErrorCode ec = ex.getErrorCode() != null ? ex.getErrorCode() : ErrorCode.COMMON_INTERNAL_ERROR;
+        ApiResponse<Void> body = ApiResponse.failure(ec.getCode(), ec.getMessage());
+        return ResponseEntity.status(ec.getHttpStatus()).body(body);
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValidException(
-            MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<Object>> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(err ->
+                fieldErrors.put(err.getField(), err.getDefaultMessage())
+        );
 
-        String message = ex.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .findFirst()
-                .map(error -> error.getField() + " : " + error.getDefaultMessage())
-                .orElse("입력값 검증에 실패했습니다.");
-
-        log.warn("[METHOD_ARGUMENT_NOT_VALID] message={}", message);
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ErrorCode.VALIDATION_FAILED, message));
+        ApiResponse<Object> body = ApiResponse.failure(
+                ErrorCode.COMMON_VALIDATION_FAILED.getCode(),
+                ErrorCode.COMMON_VALIDATION_FAILED.getMessage(),
+                fieldErrors
+        );
+        return ResponseEntity.status(ErrorCode.COMMON_VALIDATION_FAILED.getHttpStatus()).body(body);
     }
 
-    /* =========================
-     * @RequestParam / @PathVariable 검증 실패
-     * ========================= */
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ApiResponse<Object>> handleBindException(BindException ex) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(err ->
+                fieldErrors.put(err.getField(), err.getDefaultMessage())
+        );
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(
-            ConstraintViolationException ex) {
-
-        String message = ex.getConstraintViolations()
-                .stream()
-                .findFirst()
-                .map(v -> v.getPropertyPath() + " : " + v.getMessage())
-                .orElse("요청 파라미터 검증에 실패했습니다.");
-
-        log.warn("[CONSTRAINT_VIOLATION] message={}", message);
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ErrorCode.VALIDATION_FAILED, message));
+        ApiResponse<Object> body = ApiResponse.failure(
+                ErrorCode.COMMON_VALIDATION_FAILED.getCode(),
+                ErrorCode.COMMON_VALIDATION_FAILED.getMessage(),
+                fieldErrors
+        );
+        return ResponseEntity.status(ErrorCode.COMMON_VALIDATION_FAILED.getHttpStatus()).body(body);
     }
-
-    /* =========================
-     * 예상하지 못한 모든 예외
-     * ========================= */
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleException(Exception ex) {
+    public ResponseEntity<ApiResponse<Void>> handleUnhandledException(Exception ex, HttpServletRequest request) {
+        log.error("[EXCEPTION] Unhandled error. path={}", request.getRequestURI(), ex);
 
-        // 내부 구현 노출 방지
-        log.error("[UNEXPECTED_EXCEPTION]", ex);
-
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(ErrorCode.SYSTEM_ERROR));
+        ApiResponse<Void> body = ApiResponse.failure(
+                ErrorCode.COMMON_INTERNAL_ERROR.getCode(),
+                ErrorCode.COMMON_INTERNAL_ERROR.getMessage()
+        );
+        return ResponseEntity.status(ErrorCode.COMMON_INTERNAL_ERROR.getHttpStatus()).body(body);
     }
+
 }
