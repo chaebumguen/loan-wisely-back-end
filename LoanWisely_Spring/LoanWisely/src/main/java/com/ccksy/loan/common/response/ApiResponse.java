@@ -29,7 +29,7 @@ public class ApiResponse<T> {
     }
 
     /** 실패 응답(기본) */
-    public static ApiResponse<Void> failure(String code, String message) {
+    public static <T> ApiResponse<T> failure(String code, String message) {
         return new ApiResponse<>(false, null, new ErrorResponse(code, message, null));
     }
 

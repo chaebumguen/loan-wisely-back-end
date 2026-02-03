@@ -1,13 +1,45 @@
-spring:
+﻿spring:
   application:
     name: loan-wisely
+  profiles:
+    default: local
 
   datasource:
     driver-class-name: oracle.jdbc.driver.OracleDriver
-    url: jdbc:oracle:thin:@localhost:1521/XE
-    username: C##KH
-    password: KH
+    url: ${DB_URL:jdbc:oracle:thin:@localhost:1521/XE}
+    username: ${DB_USERNAME:C##KH}
+    password: ${DB_PASSWORD:KH}
 
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
+
+app:
+  security:
+    enabled: true
+    jwt:
+      secret: ${SECRET_KEY:}
+      issuer: ${SECRET_ISSUER:}
+      audience: ${SECRET_AUDIENCE:}
+      clock-skew-seconds: ${SECRET_CLOCK_SKEW_SECONDS:60}
+      scopes-claim: ${SECRET_SCOPES_CLAIM:scope}
+      scopes-claim-alt: ${SECRET_SCOPES_CLAIM_ALT:scp}
+      roles-claim: ${SECRET_ROLES_CLAIM:roles}
+      role-prefix: ${SECRET_ROLE_PREFIX:ROLE_}
+      user-id-claim: ${SECRET_USER_ID_CLAIM:sub}
+      user-id-claim-alt: ${SECRET_USER_ID_CLAIM_ALT:user_id,uid}
+  cors:
+    allowed-origins: "http://localhost:3000,http://localhost:5173"
+  http-client:
+    connect-timeout-ms: 2000
+    read-timeout-ms: 5000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+  endpoint:
+    health:
+      probes:
+        enabled: true

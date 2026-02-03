@@ -1,30 +1,31 @@
-// FILE: domain/user/service/UserProfileServiceImpl.java
+﻿// FILE: domain/user/service/UserProfileServiceImpl.java
 package com.ccksy.loan.domain.user.service;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ccksy.loan.common.exception.BusinessException;
+import com.ccksy.loan.common.exception.ErrorCode;
 import com.ccksy.loan.domain.user.dto.response.UserProfileResponse;
+import com.ccksy.loan.domain.user.entity.UserProfile;
+import com.ccksy.loan.domain.user.mapper.UserProfileMapper;
 
 /**
- * UserProfileService 구현체 (v1)
+ * UserProfileService 援ы쁽泥?(v2)
  *
- * v1 정책 반영:
- * - LV1 필드는 항상 반환 대상
- * - LV2/LV3는 저장/동의/정책 상태에 따라 null일 수 있음
- * - Response DTO에는 예외를 던지지 않음
- *
- * NOTE:
- * - 실제 데이터 조회는 Mapper/Repository로 교체되어야 함
- * - v1에서는 구조/책임 정합에 집중
+ * - ?쒖젏湲곗? 최신 유효 프로필 조회
+ * - 존재하지 않을 경우 404 반환
  */
 @Service
 public class UserProfileServiceImpl implements UserProfileService {
 
-    public UserProfileServiceImpl() {
-        // 실제 구현에서는 UserProfileMapper / Repository 주입
+    private final UserProfileMapper userProfileMapper;
+
+    public UserProfileServiceImpl(UserProfileMapper userProfileMapper) {
+        this.userProfileMapper = Objects.requireNonNull(userProfileMapper, "userProfileMapper");
     }
 
     @Override
@@ -32,14 +33,29 @@ public class UserProfileServiceImpl implements UserProfileService {
     public UserProfileResponse getUserProfile(Long userId) {
         Objects.requireNonNull(userId, "userId must not be null.");
 
-        // TODO: 실제 조회 로직은 영속계층으로 대체
-        // v1 기본 동작: 조회 결과가 없더라도 Response 계약은 유지
-        UserProfileResponse response = new UserProfileResponse();
-        response.setUserId(userId);
+        UserProfile profile = userProfileMapper.selectLatestValidByUserId(userId);
+        if (profile == null) {
+            throw new BusinessException(ErrorCode.USER_PROFILE_NOT_FOUND);
+        }
 
-        // LV1/LV2/LV3는 정책/동의 상태에 따라 세팅될 수 있음
-        // (여기서는 예시로 null 유지)
+        return toResponse(profile);
+    }
 
-        return response;
+    private UserProfileResponse toResponse(UserProfile profile) {
+        UserProfileResponse resp = new UserProfileResponse();
+        resp.setUserId(profile.getUserId());
+        resp.setAge(profile.getAge());
+        if (profile.getIncomeYear() != null) {
+            resp.setAnnualIncome(BigDecimal.valueOf(profile.getIncomeYear()));
+        }
+        resp.setGender(profile.getGender());
+        resp.setEmploymentType(profile.getEmploymentType());
+        resp.setResidenceType(profile.getResidenceType());
+        resp.setLoanPurpose(profile.getLoanPurpose());
+        if (profile.getTotalDebt() != null) {
+            resp.setTotalDebtAmount(BigDecimal.valueOf(profile.getTotalDebt()));
+        }
+        resp.setExistingLoanCount(profile.getExistingLoanCount());
+        return resp;
     }
 }

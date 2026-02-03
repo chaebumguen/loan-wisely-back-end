@@ -1,15 +1,22 @@
-package com.ccksy.loan.common.config;
+﻿package com.ccksy.loan.common.config;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.ccksy.loan.common.response.ApiResponse;
+import com.ccksy.loan.common.security.JwtAuthenticationFilter;
+import com.ccksy.loan.common.security.JwtUserContextFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,67 +25,85 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * SecurityConfig (Version 1)
  *
- * 원칙:
- * - 인증/인가 필수(70~71)
- * - 내부(INTERNAL) 엔드포인트는 엄격히 차단
- * - PUBLIC 엔드포인트는 최소 허용(/health 등)
+ * ?먯튃:
+ * - ?몄쬆/?멸? ?꾩닔(70~71)
+ * - ?대?(INTERNAL) ?붾뱶?ъ씤?몃뒈 ?꾧꺽??李⑤떒
+ * - PUBLIC ?붾뱶?ъ씤?몃뒈 理쒖냼 ?덉슜(/health ??
  *
  * NOTE:
- * - OAuth/JWT 발급/검증 인프라가 확정되지 않은 상태에서도 컴파일/기동 가능한 수준으로 구성합니다.
- * - 실제 JWT claim → 권한 매핑은 추후 Converter로 확장 가능합니다.
+ * - OAuth/JWT 諛쒓툒/寃利??명봽?쇨? ?뺤젙?섏? ?딆? ?곹깭?먯꽌??而댄뙆??湲곕룞 媛?ν븳 ?섏??쇰줈 援ъ꽦?⑸땲??
+ * - ?ㅼ젣 JWT claim ??沅뚰븳 留ㅽ븨? 異뷀썑 Converter濡??뺤옣 媛?ν빀?덈떎.
  */
-//@Configuration
+@Configuration
 @EnableMethodSecurity
+@ConditionalOnProperty(name = "app.security.enabled", havingValue = "true")
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ObjectMapper objectMapper,
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            JwtUserContextFilter jwtUserContextFilter
+    ) throws Exception {
 
         http
-            // API 서버 기본값
+            // API ?쒕쾭 湲곕낯媛?
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
-            .headers(h -> h.frameOptions(f -> f.sameOrigin())) // H2 콘솔 등을 쓸 경우 대비(운영에서는 재검토)
+            .headers(h -> h.frameOptions(f -> f.sameOrigin())) // H2 肄섏넄 ?깆쓣 ??寃쎌슦 ?鍮??댁쁺?먯꽌???ш???
             .sessionManagement(sm -> sm.sessionCreationPolicy(
                     org.springframework.security.config.http.SessionCreationPolicy.STATELESS
             ))
 
-            // 인증 실패/인가 실패 응답 표준화(내부 정보 노출 방지)
-//            .exceptionHandling(ex -> ex
-//                .authenticationEntryPoint((request, response, authException) ->
-//                        writeAuthError(response, objectMapper, 401, "UNAUTHORIZED", authException))
-//                .accessDeniedHandler((request, response, accessDeniedException) ->
-//                        writeAccessDenied(response, objectMapper, 403, "FORBIDDEN"))
-//            )
+            // ?몄쬆 ?ㅽ뙣/?멸? ?ㅽ뙣 ?묐떟 ?쒖????대? ?뺣낫 ?몄텧 諛⑹?)
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) ->
+                        writeAuthError(response, objectMapper, 401, "UNAUTHORIZED", authException))
+                .accessDeniedHandler((request, response, accessDeniedException) ->
+                        writeAccessDenied(response, objectMapper, 403, "FORBIDDEN"))
+            )
 
-            // 경로별 접근 제어
+            // 寃쎈줈蹂??묎렐 ?쒖뼱
             .authorizeHttpRequests(auth -> auth
                 // PUBLIC
                 .requestMatchers("/health").permitAll()
+                .requestMatchers("/actuator/health/**").permitAll()
+                .requestMatchers("/actuator/info").permitAll()
 
-                // INTERNAL (운영망/서비스간 호출 전제)
+                // INTERNAL (?댁쁺留??쒕퉬?ㅺ컙 ?몄텧 ?꾩젣)
                 .requestMatchers("/internal/**").hasAuthority("SCOPE_INTERNAL")
 
-                // PUBLIC metadata 조회
+                // PUBLIC metadata 議고쉶
                 .requestMatchers("/api/metadata/**").permitAll()
+
+                // PRODUCTS (READ: public, WRITE: admin)
+                .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/products", "/api/products/**").hasAuthority("SCOPE_OAUTH_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority("SCOPE_OAUTH_ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/products/**").hasAuthority("SCOPE_OAUTH_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAuthority("SCOPE_OAUTH_ADMIN")
+
+                // USER PROFILE / CONSENT (USER)
+                .requestMatchers("/api/v1/user/profile/**").hasAuthority("SCOPE_OAUTH_USER")
+                .requestMatchers("/api/v1/consent/**").hasAuthority("SCOPE_OAUTH_USER")
+
+                // RECOMMENDATIONS (USER)
+                .requestMatchers("/api/recommendations/**").hasAuthority("SCOPE_OAUTH_USER")
 
                 // ADMIN
                 .requestMatchers("/api/admin/**").hasAuthority("SCOPE_OAUTH_ADMIN")
 
-                // USER
+                // LEGACY FALLBACKS (tighten later)
                 .requestMatchers("/api/users/**").hasAuthority("SCOPE_OAUTH_USER")
-                .requestMatchers("/api/recommendations/**").hasAuthority("SCOPE_OAUTH_USER")
                 .requestMatchers("/api/events/**").hasAuthority("SCOPE_OAUTH_USER")
 
-                // 그 외는 기본 차단
+                // 洹??몃뒈 湲곕낯 李⑤떒
                 .anyRequest().denyAll()
-            )
+            );
 
-            /**
-             * (Version 1) OAuth2 Resource Server(JWT)로 구성합니다.
-             * - issuer/jwk-set-uri 등은 application.yml에서 설정해야 합니다.
-             */
-            .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAfter(jwtUserContextFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -94,8 +119,8 @@ public class SecurityConfig {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        // 메시지는 내부 노출 최소화
-        ApiResponse<Void> body = ApiResponse.failure(code, "인증이 필요합니다.");
+        // 硫붿떆吏???대? ?몄텧 理쒖냼??
+        ApiResponse<Void> body = ApiResponse.failure(code, "?몄쬆???꾩슂?⑸땲??");
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 
@@ -109,7 +134,7 @@ public class SecurityConfig {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        ApiResponse<Void> body = ApiResponse.failure(code, "접근 권한이 없습니다.");
+        ApiResponse<Void> body = ApiResponse.failure(code, "?묎렐 沅뚰븳???놁뒿?덈떎.");
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 }

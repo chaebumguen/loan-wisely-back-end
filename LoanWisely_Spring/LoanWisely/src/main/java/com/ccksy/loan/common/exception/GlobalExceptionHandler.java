@@ -5,7 +5,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -66,6 +69,54 @@ public class GlobalExceptionHandler {
                 fieldErrors
         );
         return ResponseEntity.status(ErrorCode.COMMON_VALIDATION_FAILED.getHttpStatus()).body(body);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        ApiResponse<Object> body = ApiResponse.failure(
+                ErrorCode.COMMON_BAD_REQUEST.getCode(),
+                ErrorCode.COMMON_BAD_REQUEST.getMessage()
+        );
+        return ResponseEntity.status(ErrorCode.COMMON_BAD_REQUEST.getHttpStatus()).body(body);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        ApiResponse<Object> body = ApiResponse.failure(
+                ErrorCode.COMMON_BAD_REQUEST.getCode(),
+                ErrorCode.COMMON_BAD_REQUEST.getMessage()
+        );
+        return ResponseEntity.status(ErrorCode.COMMON_BAD_REQUEST.getHttpStatus()).body(body);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex) {
+        ErrorCode ec = ErrorCode.COMMON_INTERNAL_ERROR;
+        String msg = ex.getMessage();
+        if (msg != null && msg.contains("Unauthenticated")) {
+            ec = ErrorCode.COMMON_UNAUTHORIZED;
+        }
+
+        ApiResponse<Void> body = ApiResponse.failure(ec.getCode(), ec.getMessage());
+        return ResponseEntity.status(ec.getHttpStatus()).body(body);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthentication(AuthenticationException ex) {
+        ApiResponse<Void> body = ApiResponse.failure(
+                ErrorCode.COMMON_UNAUTHORIZED.getCode(),
+                ErrorCode.COMMON_UNAUTHORIZED.getMessage()
+        );
+        return ResponseEntity.status(ErrorCode.COMMON_UNAUTHORIZED.getHttpStatus()).body(body);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+        ApiResponse<Void> body = ApiResponse.failure(
+                ErrorCode.COMMON_FORBIDDEN.getCode(),
+                ErrorCode.COMMON_FORBIDDEN.getMessage()
+        );
+        return ResponseEntity.status(ErrorCode.COMMON_FORBIDDEN.getHttpStatus()).body(body);
     }
 
     @ExceptionHandler(Exception.class)

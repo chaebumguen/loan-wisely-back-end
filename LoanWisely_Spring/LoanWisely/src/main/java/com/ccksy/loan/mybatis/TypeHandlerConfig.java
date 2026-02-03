@@ -1,4 +1,4 @@
-// FILE: mybatis/TypeHandlerConfig.java
+﻿// FILE: mybatis/TypeHandlerConfig.java
 package com.ccksy.loan.mybatis;
 
 import java.sql.CallableStatement;
@@ -22,53 +22,40 @@ import org.mybatis.spring.boot.autoconfigure.ConfigurationCustomizer;
 import org.springframework.context.annotation.Bean;
 
 /**
- * TypeHandlerConfig (v1) - FIX (MyBatisConfig와 정합)
+ * TypeHandlerConfig (v1) - FIX (MyBatisConfig? ?뺥빀)
  *
- * 정합 기준:
- * - MapperScan은 common/config/MyBatisConfig 에서만 관리한다.
- * - 본 클래스는 TypeHandler 등록만 수행한다.
- * - @MapperScan 절대 금지 (service/strategy 등을 mapper로 오인 등록하는 장애 재발 방지)
+ * ?뺥빀 湲곗?:
+ * - MapperScan? common/config/MyBatisConfig ?먯꽌留?愿由ы븳??
+ * - 蹂??대옒?ㅻ뒈 TypeHandler ?깅줉留??섑뻾?쒕떎.
+ * - @MapperScan ?덈? 湲덉? (service/strategy ?깆쓣 mapper濡??ㅼ씤 ?깅줉?섎뒈 ?μ븷 ?щ컻 諛⑹?)
  */
-//@org.springframework.context.annotation.Configuration
+@org.springframework.context.annotation.Configuration
 public class TypeHandlerConfig {
 
     /**
-     * MyBatis용 ObjectMapper
-     * - 프로젝트 공통 ObjectMapper(@Bean)가 이미 존재하면 이 Bean은 제거하고 주입으로만 받도록 조정 가능
-     */
-    @Bean
-    public ObjectMapper mybatisObjectMapper() {
-        return new ObjectMapper();
-    }
-
-    /**
      * MyBatis ConfigurationCustomizer
-     * - SqlSessionFactory를 직접 생성/덮어쓰지 않고,
-     * - MyBatis Configuration에 TypeHandler만 등록한다.
+     * - SqlSessionFactory瑜?吏곸젒 ?앹꽦/??뼱?곗? ?딄퀬,
+     * - MyBatis Configuration??TypeHandler留??깅줉?쒕떎.
      */
     @Bean
     public ConfigurationCustomizer typeHandlerCustomizer(
-            ObjectMapper mybatisObjectMapper,
-            EnumTypeHandler enumTypeHandler // 프로젝트에 이미 존재(Bean)
+            ObjectMapper objectMapper
     ) {
         return (Configuration cfg) -> {
             TypeHandlerRegistry r = cfg.getTypeHandlerRegistry();
 
-            // 1) EnumTypeHandler 등록 (기존 구현)
-            r.register(enumTypeHandler);
-
-            // 2) 통합 TypeHandler 등록(단일 파일, 타입별 내부 클래스)
+            // ?듯빀 TypeHandler ?깅줉(?⑥씪 ?뚯씪, ??낅퀎 ?대? ?대옒??
             r.register(Boolean.class, new UnifiedTypeHandler.BooleanYN());
             r.register(boolean.class, new UnifiedTypeHandler.BooleanYN());
 
-            r.register(Map.class, new UnifiedTypeHandler.JsonMap(mybatisObjectMapper));
+            r.register(Map.class, new UnifiedTypeHandler.JsonMap(objectMapper));
             r.register(List.class, new UnifiedTypeHandler.StringListCsv());
         };
     }
 
     /**
-     * 단일 파일 내 TypeHandler 모음(v1)
-     * - javaType별 handler를 분리하여 모호성 제거
+     * ?⑥씪 ?뚯씪 ??TypeHandler 紐⑥쓬(v1)
+     * - javaType蹂?handler瑜?遺꾨━?섏뿬 紐⑦샇???쒓굅
      */
     static final class UnifiedTypeHandler {
 
@@ -117,7 +104,7 @@ public class TypeHandlerConfig {
         }
 
         /**
-         * Map<String,Object> <-> JSON 문자열
+         * Map<String,Object> <-> JSON 臾몄옄??
          */
         static final class JsonMap extends BaseTypeHandler<Map<String, Object>> {
 
@@ -171,7 +158,7 @@ public class TypeHandlerConfig {
         }
 
         /**
-         * List<String> <-> CSV 문자열
+         * List<String> <-> CSV 臾몄옄??
          */
         static final class StringListCsv extends BaseTypeHandler<List<String>> {
 

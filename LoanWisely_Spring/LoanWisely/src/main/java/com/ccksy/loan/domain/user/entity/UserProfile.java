@@ -1,10 +1,10 @@
-package com.ccksy.loan.domain.user.entity;
+﻿package com.ccksy.loan.domain.user.entity;
 
 import java.time.LocalDateTime;
 
 /**
- * 사용자 프로필 이력 엔티티 (Append-only)
- * 판단/계산/상태 로직 없음
+ * ?ъ슜???꾨줈???대젰 ?뷀떚??(Append-only)
+ * ?먮떒/怨꾩궛/?곹깭 濡쒖쭅 ?놁쓬
  */
 public class UserProfile {
 
@@ -12,7 +12,7 @@ public class UserProfile {
     private Long userId;
 
     /**
-     * 이력 버전 식별자
+     * ?대젰 踰꾩쟾 ?앸퀎??
      */
     private Long profileVersionId;
 
@@ -37,64 +37,116 @@ public class UserProfile {
     private Integer existingLoanCount;
 
     /**
-     * 메타 정보
+     * 硫뷀? ?뺣낫
      */
     private LocalDateTime createdAt;
     private boolean judgable;
 
     protected UserProfile() {
-        // MyBatis 매핑 전용
+        // MyBatis 留ㅽ븨 ?꾩슜
     }
 
     public Long getId() {
         return id;
     }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public Long getUserId() {
         return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public Long getProfileVersionId() {
         return profileVersionId;
     }
 
+    public void setProfileVersionId(Long profileVersionId) {
+        this.profileVersionId = profileVersionId;
+    }
+
     public Integer getAge() {
         return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
     }
 
     public Long getIncomeYear() {
         return incomeYear;
     }
 
+    public void setIncomeYear(Long incomeYear) {
+        this.incomeYear = incomeYear;
+    }
+
     public String getGender() {
         return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
     }
 
     public String getEmploymentType() {
         return employmentType;
     }
 
+    public void setEmploymentType(String employmentType) {
+        this.employmentType = employmentType;
+    }
+
     public String getResidenceType() {
         return residenceType;
+    }
+
+    public void setResidenceType(String residenceType) {
+        this.residenceType = residenceType;
     }
 
     public String getLoanPurpose() {
         return loanPurpose;
     }
 
+    public void setLoanPurpose(String loanPurpose) {
+        this.loanPurpose = loanPurpose;
+    }
+
     public Long getTotalDebt() {
         return totalDebt;
+    }
+
+    public void setTotalDebt(Long totalDebt) {
+        this.totalDebt = totalDebt;
     }
 
     public Integer getExistingLoanCount() {
         return existingLoanCount;
     }
 
+    public void setExistingLoanCount(Integer existingLoanCount) {
+        this.existingLoanCount = existingLoanCount;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
     public boolean isJudgable() {
         return judgable;
+    }
+
+    public void setJudgable(boolean judgable) {
+        this.judgable = judgable;
     }
 }
