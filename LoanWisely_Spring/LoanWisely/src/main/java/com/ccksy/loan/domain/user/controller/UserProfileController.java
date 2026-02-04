@@ -25,7 +25,7 @@ import com.ccksy.loan.domain.user.service.UserProfileService;
  * - Request DTO??"?곌린" ?좎뒪耳?댁뒪?먯꽌留??ъ슜(?꾩옱??議고쉶留??쒓났)
  */
 @RestController
-@RequestMapping("/api/v1/user/profile")
+@RequestMapping("/api/users/me/profile")
 public class UserProfileController {
 
     private final UserProfileService userProfileService;

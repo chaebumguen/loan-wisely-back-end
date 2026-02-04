@@ -1,14 +1,14 @@
-package com.ccksy.loan.common.response;
+﻿package com.ccksy.loan.common.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
- * 전 API 공통 응답 Wrapper
+ * ??API 怨듯넻 ?묐떟 Wrapper
  *
- * 설계 원칙:
- * - 모든 API는 동일한 응답 구조를 가진다
- * - 성공/실패 여부를 payload 외부에서 명확히 구분
- * - 내부 상태/로직/스택트레이스 절대 노출 금지
+ * ?ㅺ퀎 ?먯튃:
+ * - 紐⑤뱺 API???숈씪???묐떟 援ъ“瑜?媛吏꾨떎
+ * - ?깃났/?ㅽ뙣 ?щ?瑜?payload ?몃??먯꽌 紐낇솗??援щ텇
+ * - ?대? ?곹깭/濡쒖쭅/?ㅽ깮?몃젅?댁뒪 ?덈? ?몄텧 湲덉?
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
@@ -23,22 +23,27 @@ public class ApiResponse<T> {
         this.error = error;
     }
 
-    /** 성공 응답 */
+    /** ?깃났 ?묐떟 */
     public static <T> ApiResponse<T> success(T data) {
         return new ApiResponse<>(true, data, null);
     }
 
-    /** 실패 응답(기본) */
+    /** ?ㅽ뙣 ?묐떟(湲곕낯) */
     public static <T> ApiResponse<T> failure(String code, String message) {
-        return new ApiResponse<>(false, null, new ErrorResponse(code, message, null));
+        return new ApiResponse<>(false, null, new ErrorResponse(code, message, null, null));
     }
 
     /**
-     * 실패 응답(상세 포함) - 예: 필드 검증 오류 Map 등
-     * - rejectedValue, stackTrace, SQL 등 내부값은 절대 담지 마세요.
+     * ?ㅽ뙣 ?묐떟(?곸꽭 ?ы븿) - ?? ?꾨뱶 寃利??ㅻ쪟 Map ??
+     * - rejectedValue, stackTrace, SQL ???대?媛믪? ?덈? ?댁? 留덉꽭??
      */
     public static ApiResponse<Object> failure(String code, String message, Object details) {
-        return new ApiResponse<>(false, null, new ErrorResponse(code, message, details));
+        return new ApiResponse<>(false, null, new ErrorResponse(code, message, details, null));
+    }
+
+    /** ??쎈솭 ?臾먮뼗(?怨멸쉭 + traceId) */
+    public static ApiResponse<Object> failure(String code, String message, Object details, String traceId) {
+        return new ApiResponse<>(false, null, new ErrorResponse(code, message, details, traceId));
     }
 
     public boolean isSuccess() {
@@ -54,20 +59,22 @@ public class ApiResponse<T> {
     }
 
     /**
-     * 오류 정보 최소 단위
-     * - 내부 예외, 클래스명, SQL, StackTrace 절대 포함 금지
+     * ?ㅻ쪟 ?뺣낫 理쒖냼 ?⑥쐞
+     * - ?대? ?덉쇅, ?대옒?ㅻ챸, SQL, StackTrace ?덈? ?ы븿 湲덉?
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class ErrorResponse {
 
         private final String code;
         private final String message;
-        private final Object details; // 선택: 필드 에러 등(내부값 금지)
+        private final Object details; // ?좏깮: ?꾨뱶 ?먮윭 ???대?媛?湲덉?)
+        private final String traceId;
 
-        private ErrorResponse(String code, String message, Object details) {
+        private ErrorResponse(String code, String message, Object details, String traceId) {
             this.code = code;
             this.message = message;
             this.details = details;
+            this.traceId = traceId;
         }
 
         public String getCode() {
@@ -81,5 +88,12 @@ public class ApiResponse<T> {
         public Object getDetails() {
             return details;
         }
+
+        public String getTraceId() {
+            return traceId;
+        }
     }
 }
+
+
+

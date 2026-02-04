@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ccksy.loan.common.security.UserIdResolver;
@@ -27,7 +26,6 @@ import com.ccksy.loan.domain.consent.service.UserConsentService;
  * - ?ㅼ젣 ?묐떟 ?щ㎎ ?듭씪(ApiResponse ??? common/response?먯꽌 泥섎━(?꾨줈?앺듃 ?뺤콉??留욎떠 援먯껜)
  */
 @RestController
-@RequestMapping("/api/v1/consent")
 public class UserConsentController {
 
     private final UserConsentService userConsentService;
@@ -42,7 +40,7 @@ public class UserConsentController {
      * ?숈쓽 ?щ? 議고쉶
      * ?? GET /api/v1/consent/LV3_FINANCIAL
      */
-    @GetMapping("/{consentType}")
+    @GetMapping("/api/v1/consent/{consentType}")
     public ResponseEntity<Boolean> hasConsent(@PathVariable("consentType") String consentType) {
         Long userId = userIdResolver.requireUserId();
         boolean agreed = userConsentService.hasConsent(userId, normalize(consentType));
@@ -51,7 +49,7 @@ public class UserConsentController {
 
     /**
      * ?숈쓽 ???媛깆떊
-     * ?? POST /api/v1/consent
+     * ?? POST /api/users/me/consents
      *
      * Request DTO ?대뜑媛 ?뺤젙?섏? ?딆븯?쇰?濡?v1?먯꽌??Map/primitive瑜??ъ슜?쒕떎.
      *
@@ -61,7 +59,7 @@ public class UserConsentController {
      *   "agreed": true
      * }
      */
-    @PostMapping
+    @PostMapping("/api/users/me/consents")
     public ResponseEntity<Void> saveConsent(@RequestBody ConsentBody body) {
         Long userId = userIdResolver.requireUserId();
         if (body == null) {

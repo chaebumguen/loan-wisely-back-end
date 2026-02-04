@@ -85,7 +85,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAuthority("SCOPE_OAUTH_ADMIN")
 
                 // USER PROFILE / CONSENT (USER)
-                .requestMatchers("/api/v1/user/profile/**").hasAuthority("SCOPE_OAUTH_USER")
+                .requestMatchers("/api/users/me/profile/**").hasAuthority("SCOPE_OAUTH_USER")
+                .requestMatchers("/api/users/me/consents/**").hasAuthority("SCOPE_OAUTH_USER")
+                // legacy consent GET (kept while consentType design is on hold)
                 .requestMatchers("/api/v1/consent/**").hasAuthority("SCOPE_OAUTH_USER")
 
                 // RECOMMENDATIONS (USER)
