@@ -1,4 +1,4 @@
-﻿// FILE: mybatis/TypeHandlerConfig.java
+// FILE: mybatis/TypeHandlerConfig.java
 package com.ccksy.loan.mybatis;
 
 import java.sql.CallableStatement;
@@ -22,20 +22,20 @@ import org.mybatis.spring.boot.autoconfigure.ConfigurationCustomizer;
 import org.springframework.context.annotation.Bean;
 
 /**
- * TypeHandlerConfig (v1) - FIX (MyBatisConfig? ?뺥빀)
+ * TypeHandlerConfig (v1) - FIX (MyBatisConfig 정합)
  *
- * ?뺥빀 湲곗?:
- * - MapperScan? common/config/MyBatisConfig ?먯꽌留?愿由ы븳??
- * - 蹂??대옒?ㅻ뒈 TypeHandler ?깅줉留??섑뻾?쒕떎.
- * - @MapperScan ?덈? 湲덉? (service/strategy ?깆쓣 mapper濡??ㅼ씤 ?깅줉?섎뒈 ?μ븷 ?щ컻 諛⑹?)
+ * 정합 기준:
+ * - MapperScan은 common/config/MyBatisConfig에서만 관리한다.
+ * - 본 클래스는 TypeHandler 등록만 수행한다.
+ * - @MapperScan 금지 (service/strategy 등을 mapper로 오인 등록하는 부작용 방지)
  */
 @org.springframework.context.annotation.Configuration
 public class TypeHandlerConfig {
 
     /**
      * MyBatis ConfigurationCustomizer
-     * - SqlSessionFactory瑜?吏곸젒 ?앹꽦/??뼱?곗? ?딄퀬,
-     * - MyBatis Configuration??TypeHandler留??깅줉?쒕떎.
+     * - SqlSessionFactory를 직접 생성/보유하지 않고,
+     * - MyBatis Configuration에 TypeHandler만 등록한다.
      */
     @Bean
     public ConfigurationCustomizer typeHandlerCustomizer(
@@ -44,7 +44,7 @@ public class TypeHandlerConfig {
         return (Configuration cfg) -> {
             TypeHandlerRegistry r = cfg.getTypeHandlerRegistry();
 
-            // ?듯빀 TypeHandler ?깅줉(?⑥씪 ?뚯씪, ??낅퀎 ?대? ?대옒??
+            // 공통 TypeHandler 등록(단일 파일, 타입 추가는 여기서 관리)
             r.register(Boolean.class, new UnifiedTypeHandler.BooleanYN());
             r.register(boolean.class, new UnifiedTypeHandler.BooleanYN());
 
@@ -54,8 +54,8 @@ public class TypeHandlerConfig {
     }
 
     /**
-     * ?⑥씪 ?뚯씪 ??TypeHandler 紐⑥쓬(v1)
-     * - javaType蹂?handler瑜?遺꾨━?섏뿬 紐⑦샇???쒓굅
+     * 단일 파일 내 TypeHandler 모음(v1)
+     * - javaType별 handler 분리로 명확성 확보
      */
     static final class UnifiedTypeHandler {
 
@@ -104,7 +104,7 @@ public class TypeHandlerConfig {
         }
 
         /**
-         * Map<String,Object> <-> JSON 臾몄옄??
+         * Map<String,Object> <-> JSON 문자열
          */
         static final class JsonMap extends BaseTypeHandler<Map<String, Object>> {
 
@@ -158,7 +158,7 @@ public class TypeHandlerConfig {
         }
 
         /**
-         * List<String> <-> CSV 臾몄옄??
+         * List<String> <-> CSV 문자열
          */
         static final class StringListCsv extends BaseTypeHandler<List<String>> {
 
@@ -197,8 +197,8 @@ public class TypeHandlerConfig {
                 String s = v.trim();
                 if (s.isEmpty()) return Collections.emptyList();
 
-                List<String> out = Arrays.stream(s.split((","))
-                        ).map(String::trim)
+                List<String> out = Arrays.stream(s.split((",")))
+                        .map(String::trim)
                         .filter(t -> !t.isEmpty())
                         .toList();
 

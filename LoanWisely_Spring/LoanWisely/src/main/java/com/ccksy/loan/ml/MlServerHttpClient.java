@@ -1,13 +1,13 @@
-﻿package com.ccksy.loan.ml;
+package com.ccksy.loan.ml;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * MI Server HTTP Client
+ * ML Server HTTP Client
  *
- * - ?몃? MI ?쒕쾭????듭떊 ?꾩슜
- * - 鍮꾩쫰?덉뒪/?꾨찓???먮떒 濡쒖쭅 ?덈? ?ы븿 湲덉?
+ * - 외부 ML 서버와의 통신 전용
+ * - 비즈니스/도메인 로직은 포함하지 않음
  */
 @Component
 public class MlServerHttpClient {
@@ -19,10 +19,10 @@ public class MlServerHttpClient {
     }
 
     /**
-     * MI ?쒕쾭 ?먯쿇 ?묐떟 議고쉶
+     * ML 서버 원천 응답 조회
      *
-     * @param endpointUrl MI ?쒕쾭 API ?붾뱶?ъ씤??
-     * @return ?먯쿇 ?묐떟 臾몄옄??(媛怨?湲덉?)
+     * @param endpointUrl ML 서버 API 엔드포인트
+     * @return 원천 응답 문자열(가공 금지)
      */
     public String fetchRawResponse(String endpointUrl) {
         return restTemplate.getForObject(endpointUrl, String.class);

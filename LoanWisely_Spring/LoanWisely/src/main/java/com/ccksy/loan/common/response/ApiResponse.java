@@ -3,12 +3,12 @@
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
- * ??API 怨듯넻 ?묐떟 Wrapper
+ * API 공통 응답 Wrapper
  *
- * ?ㅺ퀎 ?먯튃:
- * - 紐⑤뱺 API???숈씪???묐떟 援ъ“瑜?媛吏꾨떎
- * - ?깃났/?ㅽ뙣 ?щ?瑜?payload ?몃??먯꽌 紐낇솗??援щ텇
- * - ?대? ?곹깭/濡쒖쭅/?ㅽ깮?몃젅?댁뒪 ?덈? ?몄텧 湲덉?
+ * 목적:
+ * - 모든 API가 동일한 응답 구조를 사용한다.
+ * - success 플래그로 성공/실패를 명확히 구분한다.
+ * - 내부 상태/로직/스택트레이스 등 민감 정보는 응답에 노출하지 않는다.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
@@ -23,25 +23,26 @@ public class ApiResponse<T> {
         this.error = error;
     }
 
-    /** ?깃났 ?묐떟 */
+    /** 성공 응답 */
     public static <T> ApiResponse<T> success(T data) {
         return new ApiResponse<>(true, data, null);
     }
 
-    /** ?ㅽ뙣 ?묐떟(湲곕낯) */
+    /** 실패 응답(기본) */
     public static <T> ApiResponse<T> failure(String code, String message) {
         return new ApiResponse<>(false, null, new ErrorResponse(code, message, null, null));
     }
 
     /**
-     * ?ㅽ뙣 ?묐떟(?곸꽭 ?ы븿) - ?? ?꾨뱶 寃利??ㅻ쪟 Map ??
-     * - rejectedValue, stackTrace, SQL ???대?媛믪? ?덈? ?댁? 留덉꽭??
+     * 실패 응답(상세 포함)
+     * - 필드 검증 오류 Map 등 상세 정보를 담을 때 사용
+     * - rejectedValue, stackTrace, SQL 등 내부 값은 넣지 않는다.
      */
     public static ApiResponse<Object> failure(String code, String message, Object details) {
         return new ApiResponse<>(false, null, new ErrorResponse(code, message, details, null));
     }
 
-    /** ??쎈솭 ?臾먮뼗(?怨멸쉭 + traceId) */
+    /** 실패 응답(사용자 메시지 + traceId) */
     public static ApiResponse<Object> failure(String code, String message, Object details, String traceId) {
         return new ApiResponse<>(false, null, new ErrorResponse(code, message, details, traceId));
     }
@@ -59,15 +60,15 @@ public class ApiResponse<T> {
     }
 
     /**
-     * ?ㅻ쪟 ?뺣낫 理쒖냼 ?⑥쐞
-     * - ?대? ?덉쇅, ?대옒?ㅻ챸, SQL, StackTrace ?덈? ?ы븿 湲덉?
+     * 오류 정보 최소 단위
+     * - 내부 예외/클래스명/SQL/StackTrace 등은 포함하지 않는다.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class ErrorResponse {
 
         private final String code;
         private final String message;
-        private final Object details; // ?좏깮: ?꾨뱶 ?먮윭 ???대?媛?湲덉?)
+        private final Object details; // 선택: 필드 오류 등 상세 정보
         private final String traceId;
 
         private ErrorResponse(String code, String message, Object details, String traceId) {

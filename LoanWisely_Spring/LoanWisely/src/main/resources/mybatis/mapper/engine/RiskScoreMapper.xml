@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.engine.mapper.RiskScoreMapper">
+
+    <!-- EN_RS_001: 산출 결과 저장 -->
+    <insert id="insertRiskScore" parameterType="map">
+        <![CDATA[
+        INSERT INTO RISK_SCORE (
+            risk_score_id,
+            user_id,
+            version_ids_json,
+            score_value,
+            created_at
+        ) VALUES (
+            #{riskScoreId},
+            #{userId},
+            #{versionIdsJson},
+            #{scoreValue},
+            SYSTIMESTAMP
+        )
+        ]]>
+    </insert>
+
+    <!-- EN_RS_002: 조회 -->
+    <select id="selectRiskScoreById" parameterType="string" resultType="java.util.HashMap">
+        <![CDATA[
+        SELECT *
+        FROM RISK_SCORE
+        WHERE risk_score_id = #{riskScoreId}
+        ]]>
+    </select>
+
+</mapper>

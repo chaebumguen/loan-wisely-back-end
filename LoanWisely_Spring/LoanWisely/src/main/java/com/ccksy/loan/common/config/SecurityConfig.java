@@ -25,14 +25,14 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * SecurityConfig (Version 1)
  *
- * ?먯튃:
- * - ?몄쬆/?멸? ?꾩닔(70~71)
- * - ?대?(INTERNAL) ?붾뱶?ъ씤?몃뒈 ?꾧꺽??李⑤떒
- * - PUBLIC ?붾뱶?ъ씤?몃뒈 理쒖냼 ?덉슜(/health ??
+ * 목적:
+ * - 인증/인가 기본 정책
+ * - 내부(INTERNAL) 엔드포인트는 차단
+ * - PUBLIC 엔드포인트는 최소 허용(/health 등)
  *
  * NOTE:
- * - OAuth/JWT 諛쒓툒/寃利??명봽?쇨? ?뺤젙?섏? ?딆? ?곹깭?먯꽌??而댄뙆??湲곕룞 媛?ν븳 ?섏??쇰줈 援ъ꽦?⑸땲??
- * - ?ㅼ젣 JWT claim ??沅뚰븳 留ㅽ븨? 異뷀썑 Converter濡??뺤옣 媛?ν빀?덈떎.
+ * - OAuth/JWT 발급/검증 흐름이 확정되지 않아 최소한의 필터 체인으로 구성합니다.
+ * - 실제 JWT claim 기반 권한 매핑은 추후 Converter로 확장합니다.
  */
 @Configuration
 @EnableMethodSecurity
@@ -48,15 +48,15 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
-            // API ?쒕쾭 湲곕낯媛?
+            // API 서버 기본값
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
-            .headers(h -> h.frameOptions(f -> f.sameOrigin())) // H2 肄섏넄 ?깆쓣 ??寃쎌슦 ?鍮??댁쁺?먯꽌???ш???
+            .headers(h -> h.frameOptions(f -> f.sameOrigin())) // H2 콘솔 접근 시에만 sameOrigin 사용
             .sessionManagement(sm -> sm.sessionCreationPolicy(
                     org.springframework.security.config.http.SessionCreationPolicy.STATELESS
             ))
 
-            // ?몄쬆 ?ㅽ뙣/?멸? ?ㅽ뙣 ?묐떟 ?쒖????대? ?뺣낫 ?몄텧 諛⑹?)
+            // 인증 실패/인가 실패 응답 표준화 (내부 정보 노출 방지)
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) ->
                         writeAuthError(response, objectMapper, 401, "UNAUTHORIZED", authException))
@@ -64,17 +64,17 @@ public class SecurityConfig {
                         writeAccessDenied(response, objectMapper, 403, "FORBIDDEN"))
             )
 
-            // 寃쎈줈蹂??묎렐 ?쒖뼱
+            // 경로별 권한 제어
             .authorizeHttpRequests(auth -> auth
                 // PUBLIC
                 .requestMatchers("/health").permitAll()
                 .requestMatchers("/actuator/health/**").permitAll()
                 .requestMatchers("/actuator/info").permitAll()
 
-                // INTERNAL (?댁쁺留??쒕퉬?ㅺ컙 ?몄텧 ?꾩젣)
+                // INTERNAL (내부 서비스 간 호출 전용)
                 .requestMatchers("/internal/**").hasAuthority("SCOPE_INTERNAL")
 
-                // PUBLIC metadata 議고쉶
+                // PUBLIC metadata 조회
                 .requestMatchers("/api/metadata/**").permitAll()
 
                 // PRODUCTS (READ: public, WRITE: admin)
@@ -100,7 +100,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/users/**").hasAuthority("SCOPE_OAUTH_USER")
                 .requestMatchers("/api/events/**").hasAuthority("SCOPE_OAUTH_USER")
 
-                // 洹??몃뒈 湲곕낯 李⑤떒
+                // 그 외는 기본 차단
                 .anyRequest().denyAll()
             );
 
@@ -121,8 +121,8 @@ public class SecurityConfig {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        // 硫붿떆吏???대? ?몄텧 理쒖냼??
-        ApiResponse<Void> body = ApiResponse.failure(code, "?몄쬆???꾩슂?⑸땲??");
+        // 메시지에 내부 정보 노출 최소화
+        ApiResponse<Void> body = ApiResponse.failure(code, "인증이 필요합니다.");
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 
@@ -136,7 +136,7 @@ public class SecurityConfig {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        ApiResponse<Void> body = ApiResponse.failure(code, "?묎렐 沅뚰븳???놁뒿?덈떎.");
+        ApiResponse<Void> body = ApiResponse.failure(code, "접근 권한이 없습니다.");
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 }

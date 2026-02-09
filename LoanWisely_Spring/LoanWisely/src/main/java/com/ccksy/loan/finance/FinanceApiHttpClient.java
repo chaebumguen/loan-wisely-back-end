@@ -1,12 +1,12 @@
-﻿package com.ccksy.loan.finance;
+package com.ccksy.loan.finance;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * ?몃? 湲덉쑖 API HTTP ?몄텧 ?꾩슜 Client
- * - 湲곗닠???듭떊 梨낆엫留?蹂댁쑀
- * - 鍮꾩쫰?덉뒪/?꾨찓???댁꽍 ?덈? 湲덉?
+ * 외부 금융 API HTTP 호출 전용 Client
+ * - 기술적 통신 책임만 보유
+ * - 비즈니스/도메인 로직은 포함하지 않음
  */
 @Component
 public class FinanceApiHttpClient {
@@ -18,10 +18,10 @@ public class FinanceApiHttpClient {
     }
 
     /**
-     * ?몃? 湲덉쑖 ?곹뭹 ?먯쿇 ?곗씠??議고쉶
+     * 외부 금융 상품 원천 데이터 조회
      *
-     * @param endpointUrl ?몃? API ?붾뱶?ъ씤??
-     * @return ?먯쿇 ?묐떟 臾몄옄??(媛怨?湲덉?)
+     * @param endpointUrl 외부 API 엔드포인트
+     * @return 원천 응답 문자열(가공 금지)
      */
     public String fetchRawProductData(String endpointUrl) {
         return restTemplate.getForObject(endpointUrl, String.class);

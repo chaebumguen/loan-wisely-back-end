@@ -1,4 +1,4 @@
-﻿// FILE: domain/user/service/UserProfileServiceImpl.java
+// FILE: domain/user/service/UserProfileServiceImpl.java
 package com.ccksy.loan.domain.user.service;
 
 import java.math.BigDecimal;
@@ -14,9 +14,9 @@ import com.ccksy.loan.domain.user.entity.UserProfile;
 import com.ccksy.loan.domain.user.mapper.UserProfileMapper;
 
 /**
- * UserProfileService 援ы쁽泥?(v2)
+ * UserProfileService 구현체 (v2)
  *
- * - ?쒖젏湲곗? 최신 유효 프로필 조회
+ * - 시점 기준 최신 유효 프로필 조회
  * - 존재하지 않을 경우 404 반환
  */
 @Service

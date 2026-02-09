@@ -30,7 +30,7 @@ repositories {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
-	//implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	implementation 'io.jsonwebtoken:jjwt-impl:0.12.6'
@@ -47,11 +47,15 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	
 	// BG 260130 JacksonConfig.java : import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-	// ?�존??문제�?추�?
+	// ?�존??문제�?추�?
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
 	// https://mvnrepository.com/artifact/com.oracle.database.jdbc/ojdbc11
 	implementation "com.oracle.database.jdbc:ojdbc11:${ojdbcVersion}"
+	
+	// BG 260205
+	implementation "org.flywaydb:flyway-core:11.14.1"
+    implementation "org.flywaydb:flyway-database-oracle:11.14.1"
 }
 
 tasks.named('test') {

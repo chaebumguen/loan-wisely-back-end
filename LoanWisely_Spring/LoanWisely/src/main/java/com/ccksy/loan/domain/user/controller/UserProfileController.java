@@ -1,4 +1,4 @@
-﻿// FILE: domain/user/controller/UserProfileController.java
+// FILE: domain/user/controller/UserProfileController.java
 package com.ccksy.loan.domain.user.controller;
 
 import java.util.Objects;
@@ -15,14 +15,14 @@ import com.ccksy.loan.domain.user.service.UserProfileService;
 /**
  * UserProfileController (v1)
  *
- * 梨낆엫:
- * - HTTP ?붿껌 ?섏떊/?묐떟 諛섑솚 (?쒗쁽 怨꾩링)
- * - ?몄쬆 而⑦뀓?ㅽ듃?먯꽌 userId ?댁꽍
- * - Service濡??꾩엫
+ * 책임:
+ * - HTTP 요청 수신/응답 반환 (표현 계층)
+ * - 인증 컨텍스트에서 userId 추출
+ * - Service로 위임
  *
- * v1 ?먯튃:
- * - Controller???먮떒/?뺤콉/異붿쿇 濡쒖쭅 湲덉?
- * - Request DTO??"?곌린" ?좎뒪耳?댁뒪?먯꽌留??ъ슜(?꾩옱??議고쉶留??쒓났)
+ * v1 원칙:
+ * - Controller는 정책/검증/추천 로직 금지
+ * - Request DTO는 "읽기" 유스케이스에만 사용(현재는 조회만 제공)
  */
 @RestController
 @RequestMapping("/api/users/me/profile")
@@ -37,7 +37,7 @@ public class UserProfileController {
     }
 
     /**
-     * ?ъ슜???꾨줈??議고쉶
+     * 사용자 프로필 조회
      */
     @GetMapping
     public ResponseEntity<UserProfileResponse> getMyProfile() {

@@ -1,4 +1,4 @@
-﻿// FILE: domain/consent/controller/UserConsentController.java
+// FILE: domain/consent/controller/UserConsentController.java
 package com.ccksy.loan.domain.consent.controller;
 
 import java.util.Objects;
@@ -16,14 +16,14 @@ import com.ccksy.loan.domain.consent.service.UserConsentService;
 /**
  * UserConsentController (v1)
  *
- * 梨낆엫:
- * - HTTP ?붿껌/?묐떟 泥섎━(?쒗쁽 怨꾩링)
- * - ?몄쬆 而⑦뀓?ㅽ듃?먯꽌 userId ?댁꽍
- * - Request/Response DTO瑜??ъ슜?섏? ?딄퀬(?대뜑 誘명솗??, primitive 湲곕컲?쇰줈 Service ?꾩엫
+ * 책임:
+ * - HTTP 요청/응답 처리(표현 계층)
+ * - 인증 컨텍스트에서 userId 추출
+ * - Request/Response DTO는 필요한 범위에서만 사용(스펙 미확정으로 primitive 기반)
  *
- * 二쇱쓽:
- * - Controller???먮떒/?뺤콉/???濡쒖쭅 湲덉?
- * - ?ㅼ젣 ?묐떟 ?щ㎎ ?듭씪(ApiResponse ??? common/response?먯꽌 泥섎━(?꾨줈?앺듃 ?뺤콉??留욎떠 援먯껜)
+ * 주의:
+ * - Controller에 비즈니스/정책/검증 로직을 넣지 않는다.
+ * - 실제 응답 포맷 표준화는 ApiResponse에서 처리(프로젝트 합의에 맞춰 구체화)
  */
 @RestController
 public class UserConsentController {
@@ -37,8 +37,8 @@ public class UserConsentController {
     }
 
     /**
-     * ?숈쓽 ?щ? 議고쉶
-     * ?? GET /api/v1/consent/LV3_FINANCIAL
+     * 동의 여부 조회
+     * 예: GET /api/v1/consent/LV3_FINANCIAL
      */
     @GetMapping("/api/v1/consent/{consentType}")
     public ResponseEntity<Boolean> hasConsent(@PathVariable("consentType") String consentType) {
@@ -48,12 +48,12 @@ public class UserConsentController {
     }
 
     /**
-     * ?숈쓽 ???媛깆떊
-     * ?? POST /api/users/me/consents
+     * 동의 상태 갱신
+     * 예: POST /api/users/me/consents
      *
-     * Request DTO ?대뜑媛 ?뺤젙?섏? ?딆븯?쇰?濡?v1?먯꽌??Map/primitive瑜??ъ슜?쒕떎.
+     * Request DTO 스키마가 확정되지 않아 v1에서는 Map/primitive를 사용한다.
      *
-     * body ?덉떆:
+     * body 예시:
      * {
      *   "consentType": "LV3_FINANCIAL",
      *   "agreed": true
@@ -82,8 +82,8 @@ public class UserConsentController {
     }
 
     /**
-     * v1: Request DTO ?대뜑 誘명솗?뺤뿉 ?곕Ⅸ 理쒖냼 ?대? 諛붾뵒 紐⑤뜽(?⑥씪 ?뚯씪 ??
-     * - ?몃? ?⑦궎吏濡?DTO瑜?留뚮뱾吏 ?딄퀬, Controller ?대??먯꽌留??ъ슜
+     * v1: Request DTO 스키마 미확정에 따른 최소 바디 모델(단일 파일 유지)
+     * - 별도 패키지 DTO로 분리하지 않고 Controller 내부에서만 사용
      */
     public static final class ConsentBody {
         private String consentType;

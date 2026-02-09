@@ -1,119 +1,69 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper
   PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
 <mapper namespace="com.ccksy.loan.domain.user.mapper.UserProfileMapper">
 
-    <resultMap id="UserProfileMap" type="com.ccksy.loan.domain.user.entity.UserProfile">
-        <id property="id" column="id"/>
-        <result property="userId" column="user_id"/>
-        <result property="profileVersionId" column="profile_version_id"/>
-        <result property="age" column="age"/>
-        <result property="incomeYear" column="income_year"/>
-        <result property="gender" column="gender"/>
-        <result property="employmentType" column="employment_type"/>
-        <result property="residenceType" column="residence_type"/>
-        <result property="loanPurpose" column="loan_purpose"/>
-        <result property="totalDebt" column="total_debt"/>
-        <result property="existingLoanCount" column="existing_loan_count"/>
-        <result property="createdAt" column="created_at"/>
-        <result property="judgable" column="judgable"/>
-    </resultMap>
-
-    <select id="selectLatestValidByUserId" resultMap="UserProfileMap">
-        SELECT
-            id,
-            user_id,
-            profile_version_id,
-            age,
-            income_year,
-            gender,
-            employment_type,
-            residence_type,
-            loan_purpose,
-            total_debt,
-            existing_loan_count,
-            created_at,
-            judgable
-        FROM user_profile
+    <!-- CU_UP_002: 최신 활성 프로필 조회 -->
+    <select id="selectLatestActiveProfileByUserId" parameterType="long" resultType="java.util.HashMap">
+        <![CDATA[
+        SELECT *
+        FROM USER_PROFILE
         WHERE user_id = #{userId}
+          AND is_active = 'Y'
         ORDER BY created_at DESC
         FETCH FIRST 1 ROWS ONLY
+        ]]>
     </select>
 
-    <select id="selectByUserIdAndVersion" resultMap="UserProfileMap">
-        SELECT
-            id,
-            user_id,
-            profile_version_id,
-            age,
-            income_year,
-            gender,
-            employment_type,
-            residence_type,
-            loan_purpose,
-            total_debt,
-            existing_loan_count,
-            created_at,
-            judgable
-        FROM user_profile
+    <!-- CU_UP_002: 특정 versionId 조회 -->
+    <select id="selectProfileByUserIdAndVersionId" parameterType="map" resultType="java.util.HashMap">
+        <![CDATA[
+        SELECT *
+        FROM USER_PROFILE
         WHERE user_id = #{userId}
-          AND profile_version_id = #{profileVersionId}
+          AND version_id = #{versionId}
+        ]]>
     </select>
 
-    <insert id="insert" parameterType="com.ccksy.loan.domain.user.entity.UserProfile" useGeneratedKeys="false">
-        <selectKey keyProperty="id" resultType="long" order="BEFORE">
-            SELECT user_profile_seq.NEXTVAL FROM dual
-        </selectKey>
-        INSERT INTO user_profile (
-            id,
-            user_id,
-            profile_version_id,
-            age,
-            income_year,
-            gender,
-            employment_type,
-            residence_type,
-            loan_purpose,
-            total_debt,
-            existing_loan_count,
-            created_at,
-            judgable
+    <!-- CU_UP_001: 기존 활성 비활성화 -->
+    <update id="deactivateActiveProfilesByUserId" parameterType="long">
+        <![CDATA[
+        UPDATE USER_PROFILE
+        SET is_active = 'N'
+        WHERE user_id = #{userId}
+          AND is_active = 'Y'
+        ]]>
+    </update>
+
+    <!-- CU_UP_001: 신규 버전 insert (append-only) -->
+    <insert id="insertUserProfileVersion" parameterType="map">
+        <![CDATA[
+        INSERT INTO USER_PROFILE (
+            user_id, version_id,
+            status_code_value_id,
+            profile_json_path,
+            input_level,
+            is_active, created_at
         ) VALUES (
-            #{id},
-            #{userId},
-            #{profileVersionId},
-            #{age},
-            #{incomeYear},
-            #{gender},
-            #{employmentType},
-            #{residenceType},
-            #{loanPurpose},
-            #{totalDebt},
-            #{existingLoanCount},
-            #{createdAt},
-            #{judgable}
+            #{userId}, #{versionId},
+            #{statusCodeValueId},
+            #{profileJsonPath},
+            #{inputLevel},
+            'Y', SYSTIMESTAMP
         )
+        ]]>
     </insert>
 
-    <select id="selectHistoryByUserId" resultMap="UserProfileMap">
-        SELECT
-            id,
-            user_id,
-            profile_version_id,
-            age,
-            income_year,
-            gender,
-            employment_type,
-            residence_type,
-            loan_purpose,
-            total_debt,
-            existing_loan_count,
-            created_at,
-            judgable
-        FROM user_profile
+    <!-- CU_UP_003: 상태 변경(물리삭제 금지) -->
+    <update id="updateStatusOnActiveProfile" parameterType="map">
+        <![CDATA[
+        UPDATE USER_PROFILE
+        SET status_code_value_id = #{statusCodeValueId}
         WHERE user_id = #{userId}
-        ORDER BY created_at DESC
-    </select>
+          AND is_active = 'Y'
+        ]]>
+    </update>
 
 </mapper>

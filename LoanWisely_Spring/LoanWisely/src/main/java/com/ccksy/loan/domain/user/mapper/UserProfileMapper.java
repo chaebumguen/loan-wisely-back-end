@@ -10,12 +10,12 @@ import java.util.List;
 public interface UserProfileMapper {
 
     /**
-     * 최신 유효 프로필 조회 (판단 시점 기준)
+     * 최신 유효 프로필 조회 (활성 상태 기준)
      */
     UserProfile selectLatestValidByUserId(@Param("userId") Long userId);
 
     /**
-     * 특정 버전 프로필 조회 (감사/재현용)
+     * 특정 버전 프로필 조회 (이력/감사용)
      */
     UserProfile selectByUserIdAndVersion(
             @Param("userId") Long userId,
@@ -23,12 +23,12 @@ public interface UserProfileMapper {
     );
 
     /**
-     * 프로필 이력 적재 (append-only)
+     * 프로필 이력 저장 (append-only)
      */
     int insert(UserProfile userProfile);
 
     /**
-     * 사용자 전체 이력 조회 (관리/감사용)
+     * 사용자 프로필 이력 조회 (관리/감사용)
      */
     List<UserProfile> selectHistoryByUserId(@Param("userId") Long userId);
 }

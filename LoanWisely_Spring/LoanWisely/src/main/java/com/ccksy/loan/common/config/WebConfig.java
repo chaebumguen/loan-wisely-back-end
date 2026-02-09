@@ -15,10 +15,10 @@ public class WebConfig implements WebMvcConfigurer {
     private String allowedOrigins;
 
     /**
-     * (Version 1) CORS ?뺤콉? ?섍꼍蹂꾨줈 ?щ씪吏????덉쑝誘濡?
-     * 理쒖냼 ?덉쟾 湲곕낯媛?+ application.yml濡?移섑솚 媛?ν븯?꾨줉 援ъ꽦?⑸땲??
+     * (Version 1) CORS 설정은 환경별로 달라질 수 있으므로
+     * 최소 기본값 + application.yml로 전환 가능하도록 구성합니다.
      *
-     * - ?댁쁺?먯꽌??allowedOriginPatterns瑜?醫곹엳??寃껋쓣 沅뚯옣?⑸땲??
+     * - 운영에서는 allowedOriginPatterns를 좁게 설정하는 것을 권장합니다.
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -28,7 +28,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .toArray(String[]::new);
 
         registry.addMapping("/**")
-                // 媛쒕컻 湲곕낯媛? 濡쒖뺄 ?꾨줎???곕룞??怨좊젮 (?댁쁺 ???쒗븳 沅뚯옣)
+                // 개발 기본값: 로컬 허용. 운영에서는 제한 권장
                 .allowedOriginPatterns(origins.length == 0 ? new String[] {"http://localhost:*"} : origins)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
@@ -38,7 +38,7 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     /**
-     * swagger/?뺤쟻 由ъ냼?ㅺ? ?꾩엯??寃쎌슦 ?덉쇅 寃쎈줈瑜?異붽??섍린 ?꾪븳 ?먮━?낅땲??
+     * swagger/정적 리소스가 추가될 경우 예외 경로를 추가하기 위한 자리입니다.
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
