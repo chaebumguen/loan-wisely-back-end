@@ -1,60 +1,74 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.ccksy.loan.domain.consent.mapper.UserConsentMapper">
 
-    <!-- =========================================================
-      CU_UC_004 POST /api/users/me/consents (필수)
-      CU_UC_005 GET  /api/users/me/consents (필수)
-    ========================================================== -->
+    <resultMap id="UserConsentResultMap" type="com.ccksy.loan.domain.consent.entity.UserConsent">
+        <id     property="consentId"     column="consent_id"/>
+        <result property="userId"        column="user_id"/>
+        <result property="consentLevel"  column="consent_level"/>
+        <result property="consentGiven"  column="consent_given"/>
+        <result property="isActive"      column="is_active"/>
+        <result property="createdAt"     column="created_at"/>
+    </resultMap>
 
-    <insert id="insertUserConsent"
-            parameterType="com.ccksy.loan.domain.consent.entity.UserConsent">
-        <!-- 시퀀스명은 실제 DDL에 맞게 변경 -->
-        <selectKey keyProperty="consentId" resultType="long" order="BEFORE">
-            SELECT USER_CONSENT_SEQ.NEXTVAL FROM DUAL
-        </selectKey>
-
+    <!-- 동의 입력 INSERT -->
+    <insert id="insertUserConsent" parameterType="com.ccksy.loan.domain.consent.entity.UserConsent">
         INSERT INTO USER_CONSENT (
             consent_id,
             user_id,
             consent_level,
-            purpose_tags,
             consent_given,
             is_active,
-            created_at,
-            expired_at
+            created_at
         ) VALUES (
-            #{consentId},
+            USER_CONSENT_SEQ.NEXTVAL,
             #{userId},
             #{consentLevel},
-            #{purposeTags},
             #{consentGiven},
-            'Y',
-            SYSTIMESTAMP,
-            #{expiredAt}
+            #{isActive},
+            #{createdAt}
         )
     </insert>
 
-    <select id="selectActiveConsentsByUserId"
-            parameterType="long"
-            resultType="com.ccksy.loan.domain.consent.entity.UserConsent">
-        SELECT
-            consent_id     AS consentId,
-            user_id        AS userId,
-            consent_level  AS consentLevel,
-            purpose_tags   AS purposeTags,
-            consent_given  AS consentGiven,
-            is_active      AS isActive,
-            created_at     AS createdAt,
-            expired_at     AS expiredAt
-        FROM USER_CONSENT
-        WHERE user_id = #{userId}
-          AND is_active = 'Y'
-          AND (expired_at IS NULL OR expired_at > SYSDATE)
-        ORDER BY created_at DESC
+    <!-- 기존 활성 동의 비활성 처리 -->
+    <update id="deactivateActiveByUserIdAndLevel" parameterType="map">
+        UPDATE USER_CONSENT
+           SET is_active = 'N'
+         WHERE user_id = #{userId}
+           AND consent_level = #{consentLevel}
+           AND is_active = 'Y'
+    </update>
+
+    <!-- 최신 활성 1건 조회 (레벨 기준) -->
+    <select id="selectLatestActiveByUserIdAndLevel" parameterType="map" resultMap="UserConsentResultMap">
+        SELECT *
+          FROM USER_CONSENT
+         WHERE user_id = #{userId}
+           AND consent_level = #{consentLevel}
+           AND is_active = 'Y'
+         ORDER BY created_at DESC, consent_id DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 사용자 유효 동의 전체 조회 -->
+    <select id="selectActiveByUserId" parameterType="long" resultMap="UserConsentResultMap">
+        SELECT *
+          FROM USER_CONSENT
+         WHERE user_id = #{userId}
+           AND is_active = 'Y'
+         ORDER BY consent_level ASC, created_at DESC, consent_id DESC
+    </select>
+
+    <!-- 동의 이력 전체 조회 (레벨 기준) -->
+    <select id="selectHistoryByUserIdAndLevel" parameterType="map" resultMap="UserConsentResultMap">
+        SELECT *
+          FROM USER_CONSENT
+         WHERE user_id = #{userId}
+           AND consent_level = #{consentLevel}
+         ORDER BY created_at DESC, consent_id DESC
     </select>
 
 </mapper>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.metadata.mapper.CodeDictionaryDiffMapper">
+
+    <resultMap id="CodeDictionaryDiffResultMap" type="com.ccksy.loan.domain.metadata.entity.CodeDictionaryDiff">
+        <id     property="diffId"      column="diff_id"/>
+        <result property="preVersionId" column="pre_version_id"/>
+        <result property="postVersionId" column="post_version_id"/>
+        <result property="changeType"  column="change_type"/>
+        <result property="columnCode"  column="column_code"/>
+        <result property="beforeJsonPath" column="before_json_path"/>
+        <result property="afterJsonPath"  column="after_json_path"/>
+        <result property="createdAt"   column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.metadata.entity.CodeDictionaryDiff">
+        INSERT INTO CODE_DICTIONARY_DIFF (
+            diff_id,
+            pre_version_id,
+            post_version_id,
+            change_type,
+            column_code,
+            before_json_path,
+            after_json_path,
+            created_at
+        ) VALUES (
+            CODE_DICTIONARY_DIFF_SEQ.NEXTVAL,
+            #{preVersionId},
+            #{postVersionId},
+            #{changeType},
+            #{columnCode},
+            #{beforeJsonPath},
+            #{afterJsonPath},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectByVersionIds" resultMap="CodeDictionaryDiffResultMap">
+        SELECT *
+          FROM CODE_DICTIONARY_DIFF
+         WHERE pre_version_id = #{preVersionId}
+           AND post_version_id = #{postVersionId}
+         ORDER BY created_at DESC, diff_id DESC
+    </select>
+
+</mapper>

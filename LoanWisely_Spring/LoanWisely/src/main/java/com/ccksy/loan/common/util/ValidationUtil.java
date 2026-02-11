@@ -1,47 +1,33 @@
 package com.ccksy.loan.common.util;
 
-import java.util.Collection;
+import com.ccksy.loan.common.exception.BusinessException;
+import com.ccksy.loan.common.exception.ErrorCode;
 
-/**
- * 입력 검증 보조 유틸
- *
- * 책임:
- * - null / empty / 범위 체크 보조
- * - 판단 차단 여부 결정 ❌ (Service/Engine 책임)
- */
+import java.math.BigDecimal;
+
 public final class ValidationUtil {
 
-    private ValidationUtil() {}
-
-    public static boolean isNull(Object value) {
-        return value == null;
+    private ValidationUtil() {
     }
 
-    public static boolean isNotNull(Object value) {
-        return value != null;
+    public static void requireNonBlank(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, fieldName + " 값이 필요합니다.");
+        }
     }
 
-    public static boolean isEmpty(String value) {
-        return value == null || value.trim().isEmpty();
+    public static void requirePositive(BigDecimal value, String fieldName) {
+        if (value == null || value.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, fieldName + " 값은 0보다 커야 합니다.");
+        }
     }
 
-    public static boolean isNotEmpty(String value) {
-        return !isEmpty(value);
-    }
-
-    public static boolean isEmpty(Collection<?> collection) {
-        return collection == null || collection.isEmpty();
-    }
-
-    public static boolean isNotEmpty(Collection<?> collection) {
-        return !isEmpty(collection);
-    }
-
-    public static boolean isInRange(int value, int min, int max) {
-        return value >= min && value <= max;
-    }
-
-    public static boolean isInRange(long value, long min, long max) {
-        return value >= min && value <= max;
+    public static void requireRange(int value, int min, int max, String fieldName) {
+        if (value < min || value > max) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    String.format("%s 값은 %d~%d 범위여야 합니다.", fieldName, min, max)
+            );
+        }
     }
 }

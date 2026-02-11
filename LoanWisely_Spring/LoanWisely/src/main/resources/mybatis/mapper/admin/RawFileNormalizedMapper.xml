@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.admin.rawfile.mapper.RawFileNormalizedMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO RAW_FILE_NORMALIZED (
+            norm_id,
+            upload_id,
+            row_num,
+            column_name,
+            column_value,
+            created_at
+        )
+        <foreach collection="rows" item="row" separator="UNION ALL">
+            SELECT
+                RAW_FILE_NORMALIZED_SEQ.NEXTVAL,
+                #{row.uploadId},
+                #{row.rowNum},
+                #{row.columnName},
+                #{row.columnValue},
+                #{row.createdAt}
+            FROM dual
+        </foreach>
+    </insert>
+
+    <delete id="deleteByUploadId" parameterType="long">
+        DELETE FROM RAW_FILE_NORMALIZED WHERE upload_id = #{uploadId}
+    </delete>
+
+    <select id="countByUploadId" parameterType="long" resultType="int">
+        SELECT COUNT(*)
+          FROM RAW_FILE_NORMALIZED
+         WHERE upload_id = #{uploadId}
+    </select>
+
+    <select id="selectByUploadId" parameterType="long" resultMap="RawFileNormalizedResultMap">
+        SELECT *
+          FROM RAW_FILE_NORMALIZED
+         WHERE upload_id = #{uploadId}
+         ORDER BY row_num ASC, norm_id ASC
+    </select>
+
+    <resultMap id="RawFileNormalizedResultMap" type="com.ccksy.loan.domain.admin.rawfile.entity.RawFileNormalized">
+        <id     property="normId"     column="norm_id"/>
+        <result property="uploadId"   column="upload_id"/>
+        <result property="rowNum"     column="row_num"/>
+        <result property="columnName" column="column_name"/>
+        <result property="columnValue" column="column_value"/>
+        <result property="createdAt"  column="created_at"/>
+    </resultMap>
+
+</mapper>

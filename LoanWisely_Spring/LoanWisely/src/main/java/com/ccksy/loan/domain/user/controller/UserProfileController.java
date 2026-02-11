@@ -1,48 +1,55 @@
-// FILE: domain/user/controller/UserProfileController.java
 package com.ccksy.loan.domain.user.controller;
 
-import java.util.Objects;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.ccksy.loan.common.security.UserIdResolver;
+import com.ccksy.loan.common.response.ApiResponse;
+import com.ccksy.loan.common.security.UserAuthUtil;
+import com.ccksy.loan.domain.user.dto.request.UserProfileRequest;
 import com.ccksy.loan.domain.user.dto.response.UserProfileResponse;
 import com.ccksy.loan.domain.user.service.UserProfileService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
-/**
- * UserProfileController (v1)
- *
- * 책임:
- * - HTTP 요청 수신/응답 반환 (표현 계층)
- * - 인증 컨텍스트에서 userId 추출
- * - Service로 위임
- *
- * v1 원칙:
- * - Controller는 정책/검증/추천 로직 금지
- * - Request DTO는 "읽기" 유스케이스에만 사용(현재는 조회만 제공)
- */
 @RestController
-@RequestMapping("/api/users/me/profile")
+@RequestMapping("/api/users/me")
+@RequiredArgsConstructor
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
-    private final UserIdResolver userIdResolver;
 
-    public UserProfileController(UserProfileService userProfileService, UserIdResolver userIdResolver) {
-        this.userProfileService = Objects.requireNonNull(userProfileService, "userProfileService");
-        this.userIdResolver = Objects.requireNonNull(userIdResolver, "userIdResolver");
+    /**
+     * (설계서 기준) 사용자 프로필 생성/갱신
+     * - append-only: 신규 row insert, 기존 활성 레코드는 비활성 처리
+     */
+    @PutMapping("/profile")
+    public ApiResponse<UserProfileResponse> upsertProfile(
+            Authentication authentication,
+            @Valid @RequestBody UserProfileRequest request
+    ) {
+        Long userId = UserAuthUtil.requireUserId(authentication);
+        request.setUserId(userId);
+        return ApiResponse.ok(userProfileService.upsertProfile(request));
     }
 
     /**
-     * 사용자 프로필 조회
+     * (설계서 기준) 프로필 조회
      */
-    @GetMapping
-    public ResponseEntity<UserProfileResponse> getMyProfile() {
-        Long userId = userIdResolver.requireUserId();
-        UserProfileResponse response = userProfileService.getUserProfile(userId);
-        return ResponseEntity.ok(response);
+    @GetMapping("/profile")
+    public ApiResponse<UserProfileResponse> getLatestProfile(
+            Authentication authentication
+    ) {
+        Long userId = UserAuthUtil.requireUserId(authentication);
+        return ApiResponse.ok(userProfileService.getLatestProfile(userId));
+    }
+
+    /**
+     * 프로필 이력 조회 (내부 확인용)
+     */
+    @GetMapping("/profile/history")
+    public ApiResponse<java.util.List<UserProfileResponse>> getProfileHistory(
+            Authentication authentication
+    ) {
+        Long userId = UserAuthUtil.requireUserId(authentication);
+        return ApiResponse.ok(userProfileService.getProfileHistory(userId));
     }
 }

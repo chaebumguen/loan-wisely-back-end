@@ -1,152 +1,62 @@
-﻿package com.ccksy.loan.domain.user.entity;
+package com.ccksy.loan.domain.user.entity;
+
+import com.ccksy.loan.domain.user.dto.request.UserProfileRequest;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 /**
- * ?ъ슜???꾨줈???대젰 ?뷀떚??(Append-only)
- * ?먮떒/怨꾩궛/?곹깭 濡쒖쭅 ?놁쓬
+ * 사용자 입력/이력 엔티티
+ * - 이력 불변: 업데이트가 아니라 신규 이력 추가 전제
+ * - 활성 플래그로 최신 유효 레코드 식별
  */
+@Getter
+@Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserProfile {
 
-    private Long id;
+    // PK는 DB 시퀀스/트리거 또는 Mapper에서 처리(현재는 필드만 정의)
+    private Long profileId;
+
     private Long userId;
 
     /**
-     * ?대젰 踰꾩쟾 ?앸퀎??
+     * LV1~LV3
      */
-    private Long profileVersionId;
+    private Integer inputLevel;
 
-    /**
-     * LV1
-     */
+    // LV1
     private Integer age;
     private Long incomeYear;
     private String gender;
 
-    /**
-     * LV2
-     */
+    // LV2
     private String employmentType;
     private String residenceType;
 
-    /**
-     * LV3
-     */
-    private String loanPurpose;
-    private Long totalDebt;
+    // LV3
+    private Long debtTotal;
     private Integer existingLoanCount;
+    private String loanPurpose;
 
-    /**
-     * 硫뷀? ?뺣낫
-     */
+    // 상태/이력
+    private String inputStateCode;
+    private String isActive;     // "Y"/"N"
     private LocalDateTime createdAt;
-    private boolean judgable;
 
-    protected UserProfile() {
-        // MyBatis 留ㅽ븨 ?꾩슜
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public Long getProfileVersionId() {
-        return profileVersionId;
-    }
-
-    public void setProfileVersionId(Long profileVersionId) {
-        this.profileVersionId = profileVersionId;
-    }
-
-    public Integer getAge() {
-        return age;
-    }
-
-    public void setAge(Integer age) {
-        this.age = age;
-    }
-
-    public Long getIncomeYear() {
-        return incomeYear;
-    }
-
-    public void setIncomeYear(Long incomeYear) {
-        this.incomeYear = incomeYear;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-
-    public void setGender(String gender) {
-        this.gender = gender;
-    }
-
-    public String getEmploymentType() {
-        return employmentType;
-    }
-
-    public void setEmploymentType(String employmentType) {
-        this.employmentType = employmentType;
-    }
-
-    public String getResidenceType() {
-        return residenceType;
-    }
-
-    public void setResidenceType(String residenceType) {
-        this.residenceType = residenceType;
-    }
-
-    public String getLoanPurpose() {
-        return loanPurpose;
-    }
-
-    public void setLoanPurpose(String loanPurpose) {
-        this.loanPurpose = loanPurpose;
-    }
-
-    public Long getTotalDebt() {
-        return totalDebt;
-    }
-
-    public void setTotalDebt(Long totalDebt) {
-        this.totalDebt = totalDebt;
-    }
-
-    public Integer getExistingLoanCount() {
-        return existingLoanCount;
-    }
-
-    public void setExistingLoanCount(Integer existingLoanCount) {
-        this.existingLoanCount = existingLoanCount;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public boolean isJudgable() {
-        return judgable;
-    }
-
-    public void setJudgable(boolean judgable) {
-        this.judgable = judgable;
+    public static UserProfile from(UserProfileRequest req) {
+        return UserProfile.builder()
+                .userId(req.getUserId())
+                .inputLevel(req.getInputLevel())
+                .age(req.getAge())
+                .incomeYear(req.getIncomeYear())
+                .gender(req.getGender())
+                .employmentType(req.getEmploymentType())
+                .residenceType(req.getResidenceType())
+                .debtTotal(req.getDebtTotal())
+                .existingLoanCount(req.getExistingLoanCount())
+                .loanPurpose(req.getLoanPurpose())
+                .build();
     }
 }

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.admin.rawfile.mapper.RawFileCellMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO RAW_FILE_CELL (
+            cell_id,
+            upload_id,
+            row_num,
+            column_name,
+            column_value,
+            created_at
+        )
+        <foreach collection="cells" item="cell" separator="UNION ALL">
+            SELECT
+                RAW_FILE_CELL_SEQ.NEXTVAL,
+                #{cell.uploadId},
+                #{cell.rowNum},
+                #{cell.columnName},
+                #{cell.columnValue},
+                #{cell.createdAt}
+            FROM dual
+        </foreach>
+    </insert>
+
+    <select id="selectByUploadId" parameterType="long" resultType="com.ccksy.loan.domain.admin.rawfile.entity.RawFileCell">
+        SELECT
+            cell_id AS cellId,
+            upload_id AS uploadId,
+            row_num AS rowNum,
+            column_name AS columnName,
+            column_value AS columnValue,
+            created_at AS createdAt
+          FROM RAW_FILE_CELL
+         WHERE upload_id = #{uploadId}
+         ORDER BY row_num ASC, cell_id ASC
+    </select>
+
+    <delete id="deleteByUploadId" parameterType="long">
+        DELETE FROM RAW_FILE_CELL WHERE upload_id = #{uploadId}
+    </delete>
+
+</mapper>

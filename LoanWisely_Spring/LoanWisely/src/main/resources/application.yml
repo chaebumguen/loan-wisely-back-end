@@ -1,4 +1,4 @@
-server:
+﻿server:
   port: 8080
 
 spring:
@@ -8,24 +8,61 @@ spring:
   datasource:
     driver-class-name: oracle.jdbc.OracleDriver
     url: jdbc:oracle:thin:@localhost:1521/XE
-    username: C##PROTOV1
-    password: PROTOV1
+    username: C##PROTOV4
+    password: PROTOV4
 
   flyway:
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: true
-    # schemas는 환경에 맞게 필요 시만 사용
-    # schemas: C##SECUREAPI
+    baseline-on-migrate: false
+    clean-disabled: false
+    clean-on-validation-error: false
+    validate-on-migrate: true
+    # schemas는 환경에 맞게 필요 시에만 사용
 
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml
   type-aliases-package: com.ccksy.loan
   configuration:
     map-underscore-to-camel-case: true
+    jdbc-type-for-null: VARCHAR
 
 logging:
   level:
     root: INFO
     com.ccksy.loan: DEBUG
+    com.ccksy.loan.domain.recommend: DEBUG
+    com.ccksy.loan.domain.recommend.process: DEBUG
+    com.ccksy.loan.domain.recommend.filter: DEBUG
     org.mybatis: DEBUG
+
+security:
+  temp-api-key: "dev-temp-key"
+  admin-jwt-secret: "dev-admin-jwt-secret-please-change"
+  admin-jwt-issuer: "loanwisely-admin"
+  admin-jwt-ttl-secs: 10800
+  user-jwt-secret: "dev-user-jwt-secret-please-change"
+  user-jwt-issuer: "loanwisely-user"
+  user-jwt-ttl-secs: 3600
+  user-login-max-failures: 5
+  admin-username: "admin"
+  admin-password: "admin1234"
+  admin-roles: "SUPER_ADMIN,POLICY_WRITER,POLICY_APPROVER"
+
+storage:
+  raw-files-dir: "./storage/raw-files"
+  raw-files-schema-path: "./storage/raw-files/schema.json"
+  explain-dir: "./storage/explain"
+
+product:
+  external:
+    fss:
+      credit-url: ${FSS_API_URL_CREDIT:}
+      api-key: ${FSS_API_KEY:}
+      api-key-param: ${FSS_API_KEY_PARAM:auth}
+      response-type: ${FSS_RESPONSE_TYPE:json}
+      top-fin-grp-nos: ${FSS_TOP_FIN_GRP_NOS:}
+      top-fin-grp-nos-credit: ${FSS_TOP_FIN_GRP_NOS_CREDIT:}
+      page-no: ${FSS_PAGE_NO:1}
+      finance-cd: ${FSS_FINANCE_CD:}
+

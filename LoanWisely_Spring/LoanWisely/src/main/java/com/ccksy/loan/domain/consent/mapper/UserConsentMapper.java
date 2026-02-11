@@ -9,7 +9,16 @@ import java.util.List;
 @Mapper
 public interface UserConsentMapper {
 
-    int insert(UserConsent consent);
+    int insertUserConsent(UserConsent userConsent);
 
-    List<UserConsent> findActiveByUserId(@Param("userId") Long userId);
+    int deactivateActiveByUserIdAndLevel(@Param("userId") Long userId,
+                                         @Param("consentLevel") Integer consentLevel);
+
+    UserConsent selectLatestActiveByUserIdAndLevel(@Param("userId") Long userId,
+                                                   @Param("consentLevel") Integer consentLevel);
+
+    List<UserConsent> selectActiveByUserId(@Param("userId") Long userId);
+
+    List<UserConsent> selectHistoryByUserIdAndLevel(@Param("userId") Long userId,
+                                                    @Param("consentLevel") Integer consentLevel);
 }

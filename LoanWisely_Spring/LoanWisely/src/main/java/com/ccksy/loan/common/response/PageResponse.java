@@ -2,25 +2,20 @@ package com.ccksy.loan.common.response;
 
 import java.util.List;
 
-/**
- * 페이징 전용 응답 객체
- *
- * 책임:
- * - 목록 + 페이지 메타데이터 전달
- * - 정렬 기준, 검색 로직, 필터 조건은 포함하지 않음
- */
 public class PageResponse<T> {
 
     private final List<T> items;
     private final int page;
     private final int size;
-    private final long totalCount;
+    private final long totalElements;
+    private final int totalPages;
 
-    public PageResponse(List<T> items, int page, int size, long totalCount) {
+    public PageResponse(List<T> items, int page, int size, long totalElements) {
         this.items = items;
         this.page = page;
         this.size = size;
-        this.totalCount = totalCount;
+        this.totalElements = totalElements;
+        this.totalPages = size <= 0 ? 0 : (int) Math.ceil((double) totalElements / (double) size);
     }
 
     public List<T> getItems() {
@@ -35,7 +30,11 @@ public class PageResponse<T> {
         return size;
     }
 
-    public long getTotalCount() {
-        return totalCount;
+    public long getTotalElements() {
+        return totalElements;
+    }
+
+    public int getTotalPages() {
+        return totalPages;
     }
 }

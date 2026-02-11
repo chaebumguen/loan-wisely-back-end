@@ -1,179 +1,280 @@
-// FILE: domain/recommend/service/RecommendFacadeServiceImpl.java
 package com.ccksy.loan.domain.recommend.service;
 
-import java.lang.reflect.Constructor;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.ccksy.loan.common.exception.BusinessException;
+import com.ccksy.loan.common.exception.ErrorCode;
 import com.ccksy.loan.domain.recommend.command.RecommendCommand;
 import com.ccksy.loan.domain.recommend.command.RecommendCommandHandler;
 import com.ccksy.loan.domain.recommend.dto.request.RecommendRequest;
+import com.ccksy.loan.domain.recommend.entity.RecoEventLog;
+import com.ccksy.loan.domain.recommend.entity.RecoEstimationDetail;
+import com.ccksy.loan.domain.recommend.entity.RecoExclusionReason;
+import com.ccksy.loan.domain.recommend.entity.RecoItem;
+import com.ccksy.loan.domain.recommend.entity.RecoRejectLog;
+import com.ccksy.loan.domain.recommend.entity.RecoRequest;
+import com.ccksy.loan.domain.recommend.entity.RecoResult;
 import com.ccksy.loan.domain.recommend.entity.RecommendHistory;
+import com.ccksy.loan.domain.recommend.mapper.RecoEventLogMapper;
+import com.ccksy.loan.domain.recommend.mapper.RecoEstimationDetailMapper;
+import com.ccksy.loan.domain.recommend.mapper.RecoExclusionReasonMapper;
+import com.ccksy.loan.domain.recommend.mapper.RecoItemMapper;
+import com.ccksy.loan.domain.recommend.mapper.RecoRejectLogMapper;
+import com.ccksy.loan.domain.recommend.mapper.RecoRequestMapper;
+import com.ccksy.loan.domain.recommend.mapper.RecoResultMapper;
 import com.ccksy.loan.domain.recommend.mapper.RecommendHistoryMapper;
-import com.ccksy.loan.domain.recommend.result.core.RecommendItem;
+import com.ccksy.loan.domain.recommend.result.core.RecommendResult;
 import com.ccksy.loan.domain.recommend.result.response.RecommendResponse;
+import com.ccksy.loan.domain.product.service.ProductRateQuote;
+import com.ccksy.loan.domain.product.service.ProductRateService;
+import com.ccksy.loan.domain.user.entity.UserCreditLv1;
+import com.ccksy.loan.domain.user.mapper.UserCreditLv1Mapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * RecommendFacadeService 구현체 (v1)
- *
- * Controller 컴파일 오류 해소 포인트:
- * - recommend(request) 메서드 제공
- * - explain(recommendationId) 메서드 제공
- *
- * v1 책임:
- * - Controller는 전달만, Service는 오케스트레이션만
- * - 판단/정책/점수 로직은 process/template 구현체가 수행
- */
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Map;
+
 @Service
+@RequiredArgsConstructor
 public class RecommendFacadeServiceImpl implements RecommendFacadeService {
-
-    private static final Logger log = LoggerFactory.getLogger(RecommendFacadeServiceImpl.class);
 
     private final RecommendCommandHandler recommendCommandHandler;
     private final RecommendHistoryMapper recommendHistoryMapper;
+    private final ExplainStorageService explainStorageService;
+    private final RecoRequestMapper recoRequestMapper;
+    private final RecoResultMapper recoResultMapper;
+    private final RecoItemMapper recoItemMapper;
+    private final RecoEstimationDetailMapper recoEstimationDetailMapper;
+    private final RecoExclusionReasonMapper recoExclusionReasonMapper;
+    private final RecoRejectLogMapper recoRejectLogMapper;
+    private final RecoEventLogMapper recoEventLogMapper;
+    private final ProductRateService productRateService;
+    private final UserCreditLv1Mapper userCreditLv1Mapper;
 
-    public RecommendFacadeServiceImpl(
-            RecommendCommandHandler recommendCommandHandler,
-            RecommendHistoryMapper recommendHistoryMapper
-    ) {
-        this.recommendCommandHandler = recommendCommandHandler;
-        this.recommendHistoryMapper = recommendHistoryMapper;
-    }
-
-    /**
-     * 추천 실행
-     *
-     * @return RecommendResponse (프로젝트에 이미 존재하는 응답 DTO로 조립)
-     */
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional
     public RecommendResponse recommend(RecommendRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("RecommendRequest must not be null.");
+        request.assertRequiredFields();
+
+        UserCreditLv1 lv1 = userCreditLv1Mapper.selectLatestActiveByUserId(request.getUserId());
+        if (lv1 == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "LV1 data is required");
         }
 
-        Long userId = resolveUserId();
-        Map<String, Object> options = request.getOptions() == null ? Collections.emptyMap() : request.getOptions();
-
-        RecommendCommand command = new RecommendCommand(
-                userId,
-                request.getPolicyVersion(),
-                request.getCreditMetaVersion(),
-                request.getFinancialMetaVersion(),
-                options
-        );
-
-        // v1: 후보군은 외부에서 준비되어 주입되는 것이 원칙이나,
-        // service 폴더만 생성하는 범위에서 추가 컴포넌트/파일을 만들지 않기 위해
-        // options["candidates"]에 List<RecommendItem>이 들어온 경우만 사용한다.
-        List<RecommendItem> candidates = extractCandidates(options);
-
-        List<RecommendItem> recommended = recommendCommandHandler.handle(command, candidates);
-
-        // RecommendResponse의 생성자/팩토리 메서드 시그니처를 확정할 정보가 없으므로
-        // 컴파일 안정성을 위해 리플렉션 기반으로 조립한다(런타임 Fail-Fast).
-        return buildRecommendResponse(recommended);
-    }
-
-    /**
-     * Explain 조회
-     *
-     * @return v1에서는 Object로 반환(Controller 시그니처 정합).
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public Object explain(Long recommendationId) {
-        if (recommendationId == null) {
-            throw new IllegalArgumentException("recommendationId must not be null.");
+        RecommendCommand command = RecommendCommand.from(request);
+        RecommendResult result = recommendCommandHandler.handle(command);
+        String explainSummary = buildExplainSummary(result);
+        String explainFilePath = result.getExplainFilePath();
+        if (explainFilePath == null || explainFilePath.isBlank()) {
+            explainFilePath = explainStorageService.storeExplain(result, explainSummary);
+            result = result.toBuilder().explainFilePath(explainFilePath).build();
         }
 
-        Optional<RecommendHistory> found = recommendHistoryMapper.findById(recommendationId);
-        return found.orElseThrow(() ->
-                new IllegalStateException("Recommendation not found. id=" + recommendationId)
-        );
-    }
+        LocalDateTime now = LocalDateTime.now();
 
-    private Long resolveUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getPrincipal() == null) {
-            throw new IllegalStateException("Unauthenticated request (no authentication principal).");
-        }
+        Long recoRequestId = recoRequestMapper.selectNextId();
+        RecoRequest recoRequest = RecoRequest.builder()
+                .requestId(recoRequestId)
+                .userId(command.getUserId())
+                .versionId(null)
+                .requestedAt(now)
+                .build();
+        recoRequestMapper.insertWithId(recoRequest);
 
-        Object principal = auth.getPrincipal();
-        if (principal instanceof Number) {
-            return ((Number) principal).longValue();
-        }
+        Long recoResultId = recoResultMapper.selectNextId();
+        RecoResult recoResult = RecoResult.builder()
+                .resultId(recoResultId)
+                .requestId(recoRequestId)
+                .overallScore(null)
+                .policyVersion(result.getPolicyVersion())
+                .confidenceLevelCodeValueId(null)
+                .explanationJsonPath(explainFilePath)
+                .createdAt(now)
+                .build();
+        recoResultMapper.insertWithId(recoResult);
 
-        String s = String.valueOf(principal).trim();
-        try {
-            return Long.parseLong(s);
-        } catch (Exception e) {
-            throw new IllegalStateException("Cannot resolve userId from principal: " + principal);
-        }
-    }
+        if (result.getItems() != null) {
+            int rank = 1;
+            for (var item : result.getItems()) {
+                ProductRateQuote rateQuote = productRateService.getRateQuote(item.getProductId());
+                BigDecimal estimatedRate = item.getMinRate();
+                if (estimatedRate == null && rateQuote != null) {
+                    estimatedRate = rateQuote.getRateMin();
+                }
+                BigDecimal estimatedLimit = productRateService.estimateLimit(request.getUserId(), rateQuote);
 
-    @SuppressWarnings("unchecked")
-    private List<RecommendItem> extractCandidates(Map<String, Object> options) {
-        Object v = options.get("candidates");
-        if (v == null) return List.of();
-        if (v instanceof List) {
-            try {
-                return (List<RecommendItem>) v;
-            } catch (ClassCastException e) {
-                log.warn("options.candidates exists but not List<RecommendItem>. type={}", v.getClass().getName());
-                return List.of();
+                RecoItem recoItem = RecoItem.builder()
+                        .resultId(recoResultId)
+                        .productId(item.getProductId())
+                        .matchingScore(toBigDecimal(item.getScore()))
+                        .estimatedRate(estimatedRate)
+                        .estimatedLimit(estimatedLimit)
+                        .stabilityScore(toBigDecimal(item.getScore()))
+                        .reasonJsonPath(item.getBriefReason())
+                        .rank(rank++)
+                        .createdAt(now)
+                        .build();
+                recoItemMapper.insert(recoItem);
+
+                Long itemId = recoItemMapper.selectCurrentId();
+                if (itemId != null) {
+                    insertEstimationDetails(itemId, item, rateQuote, estimatedRate, estimatedLimit, now);
+                }
             }
         }
-        return List.of();
+
+        if (result.getWarnings() != null && !result.getWarnings().isEmpty()
+                && result.getItems() != null && !result.getItems().isEmpty()) {
+            for (var item : result.getItems()) {
+                for (Map.Entry<String, String> entry : result.getWarnings().entrySet()) {
+                    RecoExclusionReason reason = RecoExclusionReason.builder()
+                            .resultId(recoResultId)
+                            .productId(item.getProductId())
+                            .reasonCode(entry.getKey())
+                            .reasonText(entry.getValue())
+                            .createdAt(now)
+                            .build();
+                    recoExclusionReasonMapper.insert(reason);
+                }
+            }
+        }
+
+        if (!"READY".equalsIgnoreCase(result.getState())
+                && result.getItems() != null
+                && !result.getItems().isEmpty()) {
+            for (var item : result.getItems()) {
+                RecoRejectLog log = RecoRejectLog.builder()
+                        .requestId(recoRequestId)
+                        .productId(item.getProductId())
+                        .rejectCode(result.getState())
+                        .rejectReason("Rejected by state: " + result.getState())
+                        .createdAt(now)
+                        .build();
+                recoRejectLogMapper.insert(log);
+            }
+        }
+
+        if (result.getItems() != null && !result.getItems().isEmpty()) {
+            for (var item : result.getItems()) {
+                RecoEventLog log = RecoEventLog.builder()
+                        .maskedUserId("U" + command.getUserId())
+                        .productId(item.getProductId())
+                        .eventTypeCodeValueId("RECO_CREATED")
+                        .occurredAt(now)
+                        .build();
+                recoEventLogMapper.insert(log);
+            }
+        }
+
+        Long recommendId = recommendHistoryMapper.selectNextId();
+        RecommendHistory history = RecommendHistory.builder()
+                .recommendId(recommendId)
+                .userId(command.getUserId())
+                .reproduceKey(result.getReproduceKey())
+                .policyVersion(result.getPolicyVersion())
+                .metaVersion(result.getMetaVersion())
+                .evidenceFilePath(result.getEvidenceFilePath())
+                .explainFilePath(result.getExplainFilePath())
+                .explainSummary(explainSummary)
+                .recoRequestId(recoRequestId)
+                .recoResultId(recoResultId)
+                .recommendState(result.getState())
+                .createdAt(now)
+                .build();
+
+        recommendHistoryMapper.insertRecommendHistory(history);
+
+        return RecommendResponse.from(result, recommendId);
     }
 
-    private RecommendResponse buildRecommendResponse(List<RecommendItem> items) {
-        List<RecommendItem> safe = (items == null) ? List.of() : items;
-
-        // 1) public RecommendResponse(List<RecommendItem>)
-        try {
-            Constructor<RecommendResponse> c = RecommendResponse.class.getConstructor(List.class);
-            return c.newInstance(safe);
-        } catch (NoSuchMethodException ignore) {
-            // next
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to instantiate RecommendResponse via (List) constructor.", e);
+    @Override
+    @Transactional(readOnly = true)
+    public RecommendResponse reproduce(String reproduceKey) {
+        if (reproduceKey == null || reproduceKey.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "reproduceKey is required");
         }
 
-        // 2) static of(List)
-        try {
-            return (RecommendResponse) RecommendResponse.class
-                    .getMethod("of", List.class)
-                    .invoke(null, safe);
-        } catch (NoSuchMethodException ignore) {
-            // next
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to build RecommendResponse via static of(List).", e);
+        RecommendHistory history = recommendHistoryMapper.selectByReproduceKey(reproduceKey);
+        if (history == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "reproduceKey not found");
         }
 
-        // 3) static from(List)
-        try {
-            return (RecommendResponse) RecommendResponse.class
-                    .getMethod("from", List.class)
-                    .invoke(null, safe);
-        } catch (NoSuchMethodException ignore) {
-            // final
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to build RecommendResponse via static from(List).", e);
-        }
+        RecommendResult result = RecommendResult.builder()
+                .state(history.getRecommendState())
+                .reproduceKey(history.getReproduceKey())
+                .resolvedInputLevel(null)
+                .policyVersion(history.getPolicyVersion())
+                .metaVersion(history.getMetaVersion())
+                .evidenceFilePath(history.getEvidenceFilePath())
+                .explainFilePath(history.getExplainFilePath())
+                .build();
 
-        throw new IllegalStateException(
-                "RecommendResponse builder not found. Provide either: "
-                        + "public RecommendResponse(List), static of(List), or static from(List)."
-        );
+        return RecommendResponse.from(result, history.getRecommendId());
+    }
+
+    private String buildExplainSummary(RecommendResult result) {
+        if (result == null) return null;
+        return "state=" + safe(result.getState()) +
+                ";inputLevel=" + safe(result.getResolvedInputLevel()) +
+                ";policyVersion=" + safe(result.getPolicyVersion()) +
+                ";metaVersion=" + safe(result.getMetaVersion());
+    }
+
+    private String safe(Object value) {
+        return value == null ? "" : value.toString();
+    }
+
+    private BigDecimal toBigDecimal(BigDecimal value) {
+        return value;
+    }
+
+    private void insertEstimationDetails(Long itemId,
+                                         com.ccksy.loan.domain.recommend.result.core.RecommendItem item,
+                                         ProductRateQuote quote,
+                                         BigDecimal estimatedRate,
+                                         BigDecimal estimatedLimit,
+                                         LocalDateTime now) {
+        BigDecimal score = toBigDecimal(item.getScore());
+        if (score != null) {
+            recoEstimationDetailMapper.insert(RecoEstimationDetail.builder()
+                    .itemId(itemId)
+                    .factorCode("SCORE")
+                    .factorName("Matching Score")
+                    .factorValue(score.toPlainString())
+                    .contribution(score)
+                    .createdAt(now)
+                    .build());
+        }
+        if (estimatedRate != null) {
+            recoEstimationDetailMapper.insert(RecoEstimationDetail.builder()
+                    .itemId(itemId)
+                    .factorCode("RATE_MIN")
+                    .factorName("Minimum Rate")
+                    .factorValue(estimatedRate.toPlainString())
+                    .contribution(null)
+                    .createdAt(now)
+                    .build());
+        }
+        if (quote != null && quote.getRateMax() != null) {
+            recoEstimationDetailMapper.insert(RecoEstimationDetail.builder()
+                    .itemId(itemId)
+                    .factorCode("RATE_MAX")
+                    .factorName("Maximum Rate")
+                    .factorValue(quote.getRateMax().toPlainString())
+                    .contribution(null)
+                    .createdAt(now)
+                    .build());
+        }
+        if (estimatedLimit != null) {
+            recoEstimationDetailMapper.insert(RecoEstimationDetail.builder()
+                    .itemId(itemId)
+                    .factorCode("LIMIT_EST")
+                    .factorName("Estimated Limit")
+                    .factorValue(estimatedLimit.toPlainString())
+                    .contribution(null)
+                    .createdAt(now)
+                    .build());
+        }
     }
 }

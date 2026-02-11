@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.product.mapper.ProductInterestRateMapper">
+
+    <resultMap id="ProductInterestRateResultMap" type="com.ccksy.loan.domain.product.entity.ProductInterestRate">
+        <id     property="rateId"    column="rate_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="rateBase"  column="rate_base"/>
+        <result property="rateMin"   column="rate_min"/>
+        <result property="rateMax"   column="rate_max"/>
+        <result property="asOfDate"  column="as_of_date"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="selectLatestByProductId" parameterType="long" resultMap="ProductInterestRateResultMap">
+        SELECT *
+          FROM (
+                SELECT *
+                  FROM PRODUCT_INTEREST_RATE
+                 WHERE product_id = #{productId}
+                 ORDER BY as_of_date DESC, rate_id DESC
+          )
+         WHERE ROWNUM = 1
+    </select>
+
+</mapper>

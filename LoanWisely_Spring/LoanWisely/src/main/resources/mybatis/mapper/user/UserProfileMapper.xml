@@ -1,69 +1,94 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.ccksy.loan.domain.user.mapper.UserProfileMapper">
 
-    <!-- CU_UP_002: 최신 활성 프로필 조회 -->
-    <select id="selectLatestActiveProfileByUserId" parameterType="long" resultType="java.util.HashMap">
-        <![CDATA[
-        SELECT *
-        FROM USER_PROFILE
-        WHERE user_id = #{userId}
-          AND is_active = 'Y'
-        ORDER BY created_at DESC
-        FETCH FIRST 1 ROWS ONLY
-        ]]>
-    </select>
+    <!--
+      UserProfile Entity 기준 매핑
+      - snake_case 컬럼명을 명시적으로 camelCase 프로퍼티에 매핑 (환경설정 의존 제거)
+    -->
+    <resultMap id="UserProfileResultMap" type="com.ccksy.loan.domain.user.entity.UserProfile">
+        <id     property="profileId"         column="profile_id"/>
+        <result property="userId"            column="user_id"/>
+        <result property="inputLevel"        column="input_level"/>
 
-    <!-- CU_UP_002: 특정 versionId 조회 -->
-    <select id="selectProfileByUserIdAndVersionId" parameterType="map" resultType="java.util.HashMap">
-        <![CDATA[
-        SELECT *
-        FROM USER_PROFILE
-        WHERE user_id = #{userId}
-          AND version_id = #{versionId}
-        ]]>
-    </select>
+        <result property="age"               column="age"/>
+        <result property="incomeYear"        column="income_year"/>
+        <result property="gender"            column="gender"/>
 
-    <!-- CU_UP_001: 기존 활성 비활성화 -->
-    <update id="deactivateActiveProfilesByUserId" parameterType="long">
-        <![CDATA[
-        UPDATE USER_PROFILE
-        SET is_active = 'N'
-        WHERE user_id = #{userId}
-          AND is_active = 'Y'
-        ]]>
-    </update>
+        <result property="employmentType"    column="employment_type"/>
+        <result property="residenceType"     column="residence_type"/>
 
-    <!-- CU_UP_001: 신규 버전 insert (append-only) -->
-    <insert id="insertUserProfileVersion" parameterType="map">
-        <![CDATA[
+        <result property="debtTotal"         column="debt_total"/>
+        <result property="existingLoanCount" column="existing_loan_count"/>
+        <result property="loanPurpose"       column="loan_purpose"/>
+
+        <result property="inputStateCode"    column="input_state_code"/>
+        <result property="isActive"          column="is_active"/>
+        <result property="createdAt"         column="created_at"/>
+    </resultMap>
+
+    <!-- 신규 이력 INSERT (이력 불변 원칙) -->
+    <insert id="insertUserProfile" parameterType="com.ccksy.loan.domain.user.entity.UserProfile">
         INSERT INTO USER_PROFILE (
-            user_id, version_id,
-            status_code_value_id,
-            profile_json_path,
+            profile_id,
+            user_id,
             input_level,
-            is_active, created_at
+            age,
+            income_year,
+            gender,
+            employment_type,
+            residence_type,
+            debt_total,
+            existing_loan_count,
+            loan_purpose,
+            input_state_code,
+            is_active,
+            created_at
         ) VALUES (
-            #{userId}, #{versionId},
-            #{statusCodeValueId},
-            #{profileJsonPath},
+            USER_PROFILE_SEQ.NEXTVAL,
+            #{userId},
             #{inputLevel},
-            'Y', SYSTIMESTAMP
+            #{age},
+            #{incomeYear},
+            #{gender},
+            #{employmentType},
+            #{residenceType},
+            #{debtTotal},
+            #{existingLoanCount},
+            #{loanPurpose},
+            #{inputStateCode},
+            #{isActive},
+            #{createdAt}
         )
-        ]]>
     </insert>
 
-    <!-- CU_UP_003: 상태 변경(물리삭제 금지) -->
-    <update id="updateStatusOnActiveProfile" parameterType="map">
-        <![CDATA[
+    <!-- 기존 유효 레코드 비활성화 -->
+    <update id="deactivateActiveByUserId" parameterType="map">
         UPDATE USER_PROFILE
-        SET status_code_value_id = #{statusCodeValueId}
-        WHERE user_id = #{userId}
-          AND is_active = 'Y'
-        ]]>
+           SET is_active = 'N'
+         WHERE user_id = #{userId}
+           AND is_active = 'Y'
     </update>
+
+    <!-- 최신 유효 1건 조회 -->
+    <select id="selectLatestActiveByUserId" parameterType="long" resultMap="UserProfileResultMap">
+        SELECT *
+          FROM USER_PROFILE
+         WHERE user_id = #{userId}
+           AND is_active = 'Y'
+         ORDER BY created_at DESC, profile_id DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 이력 전체 조회 -->
+    <select id="selectHistoryByUserId" parameterType="long" resultMap="UserProfileResultMap">
+        SELECT *
+          FROM USER_PROFILE
+         WHERE user_id = #{userId}
+         ORDER BY created_at DESC, profile_id DESC
+    </select>
 
 </mapper>

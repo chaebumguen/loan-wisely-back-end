@@ -1,33 +1,34 @@
 package com.ccksy.loan.domain.recommend.result.core;
 
-import java.util.ArrayList;
-import java.util.List;
+import lombok.Builder;
+import lombok.Getter;
 
-/**
- * 추천 결과 핵심 모델
- *
- * <p>Decorator 적용 전/후의 공통 베이스가 되는 객체</p>
- */
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Getter
+@Builder(toBuilder = true)
 public class RecommendResult {
 
+    private String state;            // READY / NOT_READY / BLOCKED
+    private String reproduceKey;
+
+    private Integer resolvedInputLevel;
+
+    private String policyVersion;
+    private String metaVersion;
+
+    private String evidenceFilePath; // DB에는 경로만 저장
+    private String explainFilePath;  // DB에는 경로만 저장
+
+    @Builder.Default
     private List<RecommendItem> items = new ArrayList<>();
-    private int totalCount;
 
-    // --- getter / setter ---
-
-    public List<RecommendItem> getItems() {
-        return items;
-    }
-
-    public void setItems(List<RecommendItem> items) {
-        this.items = items;
-    }
-
-    public int getTotalCount() {
-        return totalCount;
-    }
-
-    public void setTotalCount(int totalCount) {
-        this.totalCount = totalCount;
-    }
+    /**
+     * 전역 경고/안내(상품 단위 제외사유는 다음 PART에서 productId별로 확장)
+     */
+    @Builder.Default
+    private Map<String, String> warnings = new HashMap<>();
 }

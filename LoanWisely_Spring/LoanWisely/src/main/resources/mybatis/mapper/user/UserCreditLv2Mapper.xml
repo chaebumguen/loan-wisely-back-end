@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.user.mapper.UserCreditLv2Mapper">
+
+    <resultMap id="UserCreditLv2ResultMap" type="com.ccksy.loan.domain.user.entity.UserCreditLv2">
+        <id     property="lv2Id"           column="lv2_id"/>
+        <result property="userId"          column="user_id"/>
+        <result property="employmentType"  column="employment_type"/>
+        <result property="residenceType"   column="residence_type"/>
+        <result property="isActive"        column="is_active"/>
+        <result property="createdAt"       column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.user.entity.UserCreditLv2">
+        INSERT INTO USER_CREDIT_LV2 (
+            lv2_id,
+            user_id,
+            employment_type,
+            residence_type,
+            is_active,
+            created_at
+        ) VALUES (
+            #{lv2Id},
+            #{userId},
+            #{employmentType},
+            #{residenceType},
+            #{isActive},
+            #{createdAt}
+        )
+    </insert>
+
+    <update id="deactivateActiveByUserId" parameterType="long">
+        UPDATE USER_CREDIT_LV2
+           SET is_active = 'N'
+         WHERE user_id = #{userId}
+           AND is_active = 'Y'
+    </update>
+
+    <select id="selectLatestActiveByUserId" parameterType="long" resultMap="UserCreditLv2ResultMap">
+        SELECT *
+          FROM USER_CREDIT_LV2
+         WHERE user_id = #{userId}
+           AND is_active = 'Y'
+         ORDER BY created_at DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <select id="selectHistoryByUserId" parameterType="long" resultMap="UserCreditLv2ResultMap">
+        SELECT *
+          FROM USER_CREDIT_LV2
+         WHERE user_id = #{userId}
+         ORDER BY created_at DESC
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT USER_CREDIT_LV2_SEQ.NEXTVAL FROM dual
+    </select>
+
+</mapper>

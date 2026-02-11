@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.recommend.mapper.RecoRequestMapper">
+
+    <resultMap id="RecoRequestResultMap" type="com.ccksy.loan.domain.recommend.entity.RecoRequest">
+        <id     property="requestId"   column="request_id"/>
+        <result property="userId"      column="user_id"/>
+        <result property="versionId"   column="version_id"/>
+        <result property="requestedAt" column="requested_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.recommend.entity.RecoRequest">
+        INSERT INTO RECO_REQUEST (
+            request_id,
+            user_id,
+            version_id,
+            requested_at
+        ) VALUES (
+            RECO_REQUEST_SEQ.NEXTVAL,
+            #{userId},
+            #{versionId},
+            #{requestedAt}
+        )
+    </insert>
+
+    <select id="selectNextId" resultType="long">
+        SELECT RECO_REQUEST_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <insert id="insertWithId" parameterType="com.ccksy.loan.domain.recommend.entity.RecoRequest">
+        INSERT INTO RECO_REQUEST (
+            request_id,
+            user_id,
+            version_id,
+            requested_at
+        ) VALUES (
+            #{requestId},
+            #{userId},
+            #{versionId},
+            #{requestedAt}
+        )
+    </insert>
+
+    <select id="selectById" parameterType="long" resultMap="RecoRequestResultMap">
+        SELECT *
+          FROM RECO_REQUEST
+         WHERE request_id = #{requestId}
+    </select>
+
+</mapper>

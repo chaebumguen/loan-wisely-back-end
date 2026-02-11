@@ -1,17 +1,14 @@
 package com.ccksy.loan.domain.user.state;
 
-import com.ccksy.loan.domain.user.dto.request.UserProfileRequest;
-
 public class NotJudgableState implements UserInputState {
-
-    @Override
-    public UserInputState handle(UserProfileRequest request) {
-        // 판단 불가 상태 고정
-        return this;
-    }
 
     @Override
     public String code() {
         return "NOT_JUDGABLE";
+    }
+
+    @Override
+    public String description() {
+        return "입력값이 유효하지 않아 판단이 불가능합니다.";
     }
 }

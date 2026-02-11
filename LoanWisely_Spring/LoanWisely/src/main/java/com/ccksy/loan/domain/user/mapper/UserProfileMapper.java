@@ -9,26 +9,11 @@ import java.util.List;
 @Mapper
 public interface UserProfileMapper {
 
-    /**
-     * 최신 유효 프로필 조회 (활성 상태 기준)
-     */
-    UserProfile selectLatestValidByUserId(@Param("userId") Long userId);
+    int insertUserProfile(UserProfile userProfile);
 
-    /**
-     * 특정 버전 프로필 조회 (이력/감사용)
-     */
-    UserProfile selectByUserIdAndVersion(
-            @Param("userId") Long userId,
-            @Param("profileVersionId") Long profileVersionId
-    );
+    int deactivateActiveByUserId(@Param("userId") Long userId);
 
-    /**
-     * 프로필 이력 저장 (append-only)
-     */
-    int insert(UserProfile userProfile);
+    UserProfile selectLatestActiveByUserId(@Param("userId") Long userId);
 
-    /**
-     * 사용자 프로필 이력 조회 (관리/감사용)
-     */
     List<UserProfile> selectHistoryByUserId(@Param("userId") Long userId);
 }

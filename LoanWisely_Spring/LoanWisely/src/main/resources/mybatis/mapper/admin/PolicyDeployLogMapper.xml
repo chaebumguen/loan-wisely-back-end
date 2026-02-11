@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.admin.policy.mapper.PolicyDeployLogMapper">
+
+    <select id="selectNextId" resultType="long">
+        SELECT POLICY_DEPLOY_LOG_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.admin.policy.entity.PolicyDeployLog">
+        INSERT INTO POLICY_DEPLOY_LOG (
+            deploy_id,
+            policy_id,
+            previous_policy_id,
+            action,
+            reason,
+            actor_id,
+            deployed_at
+        ) VALUES (
+            #{deployId},
+            #{policyId},
+            #{previousPolicyId},
+            #{action},
+            #{reason},
+            #{actorId},
+            #{deployedAt}
+        )
+    </insert>
+
+    <select id="selectLatestByPolicyId" parameterType="long" resultType="com.ccksy.loan.domain.admin.policy.entity.PolicyDeployLog">
+        SELECT
+            deploy_id AS deployId,
+            policy_id AS policyId,
+            previous_policy_id AS previousPolicyId,
+            action,
+            reason,
+            actor_id AS actorId,
+            deployed_at AS deployedAt
+          FROM POLICY_DEPLOY_LOG
+         WHERE policy_id = #{policyId}
+         ORDER BY deployed_at DESC, deploy_id DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <select id="selectByPolicyId" parameterType="long" resultType="com.ccksy.loan.domain.admin.policy.entity.PolicyDeployLog">
+        SELECT
+            deploy_id AS deployId,
+            policy_id AS policyId,
+            previous_policy_id AS previousPolicyId,
+            action,
+            reason,
+            actor_id AS actorId,
+            deployed_at AS deployedAt
+          FROM POLICY_DEPLOY_LOG
+         WHERE policy_id = #{policyId}
+         ORDER BY deployed_at DESC, deploy_id DESC
+    </select>
+
+</mapper>

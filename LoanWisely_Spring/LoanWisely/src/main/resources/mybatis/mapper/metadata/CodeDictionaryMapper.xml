@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.metadata.mapper.CodeDictionaryMapper">
+
+    <resultMap id="CodeDictionaryResultMap" type="com.ccksy.loan.domain.metadata.entity.CodeDictionary">
+        <id     property="dictId"      column="dict_id"/>
+        <result property="versionId"   column="version_id"/>
+        <result property="columnCode"  column="column_code"/>
+        <result property="columnName"  column="column_name"/>
+        <result property="columnDesc"  column="column_desc"/>
+        <result property="largeCategoryCodeValueId" column="large_category_code_value_id"/>
+        <result property="mideumCategoryCodeValueId" column="mideum_category_code_value_id"/>
+        <result property="smallCategoryCodeValueId" column="small_category_code_value_id"/>
+        <result property="isRequired"  column="is_required"/>
+        <result property="dataType"    column="data_type"/>
+        <result property="createdAt"   column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.metadata.entity.CodeDictionary">
+        INSERT INTO CODE_DICTIONARY (
+            dict_id,
+            version_id,
+            column_code,
+            column_name,
+            column_desc,
+            large_category_code_value_id,
+            mideum_category_code_value_id,
+            small_category_code_value_id,
+            is_required,
+            data_type,
+            created_at
+        ) VALUES (
+            CODE_DICTIONARY_SEQ.NEXTVAL,
+            #{versionId},
+            #{columnCode},
+            #{columnName},
+            #{columnDesc},
+            #{largeCategoryCodeValueId},
+            #{mideumCategoryCodeValueId},
+            #{smallCategoryCodeValueId},
+            #{isRequired},
+            #{dataType},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectById" parameterType="long" resultMap="CodeDictionaryResultMap">
+        SELECT *
+          FROM CODE_DICTIONARY
+         WHERE dict_id = #{dictId}
+    </select>
+
+    <select id="selectByVersionId" parameterType="long" resultMap="CodeDictionaryResultMap">
+        SELECT *
+          FROM CODE_DICTIONARY
+         WHERE version_id = #{versionId}
+         ORDER BY dict_id ASC
+    </select>
+
+    <delete id="deleteByVersionId" parameterType="long">
+        DELETE FROM CODE_DICTIONARY
+         WHERE version_id = #{versionId}
+    </delete>
+
+</mapper>
