@@ -38,6 +38,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +51,7 @@ public class RecommendQueryService {
 
     private final RecommendHistoryMapper recommendHistoryMapper;
     private final LoanProductMapper loanProductMapper;
+    private final com.ccksy.loan.domain.product.mapper.ProviderMapper providerMapper;
     private final RecoItemMapper recoItemMapper;
     private final RecoEstimationDetailMapper recoEstimationDetailMapper;
     private final RecoExclusionReasonMapper recoExclusionReasonMapper;
@@ -246,29 +248,35 @@ public class RecommendQueryService {
             return buildProductsFromPayload(payload, userId);
         }
 
+        Map<Long, List<RecoExclusionReason>> reasonMap = buildReasonMap(fetchExclusionReasons(history));
         List<RecommendProductResponse> products = new ArrayList<>();
         for (RecoItem item : recoItems) {
             Long productId = item.getProductId();
             String productName = "대출 상품";
-            String lenderName = "Provider";
+            String lenderName = "금융사";
 
             if (productId != null) {
                 LoanProduct product = loanProductMapper.selectById(productId);
                 if (product != null) {
                     productName = product.getProductName() == null ? productName : product.getProductName();
-                    lenderName = product.getProviderId() == null
-                            ? lenderName
-                            : "Provider " + product.getProviderId();
+                    if (product.getCompanyName() != null && !product.getCompanyName().isBlank()) {
+                        lenderName = product.getCompanyName();
+                    } else if (product.getFinCoNo() != null && !product.getFinCoNo().isBlank()) {
+                        var provider = providerMapper.selectByFinCoNo(product.getFinCoNo());
+                        if (provider != null && provider.getCompanyName() != null && !provider.getCompanyName().isBlank()) {
+                            lenderName = provider.getCompanyName();
+                        }
+                    }
                 } else {
-                    productName = "Product " + productId;
-                    lenderName = "Provider";
+                    productName = "대출 상품";
+                    lenderName = "금융사";
                 }
             }
 
             ProductRateQuote quote = productRateService.getRateQuote(productId);
             String rate = formatRate(resolveRateMin(item, quote), resolveRateMax(quote));
-            String reason = item.getReasonJsonPath();
-            Integer score = item.getMatchingScore() == null ? null : item.getMatchingScore().intValue();
+            String reason = buildReasonText(reasonMap.get(productId), item, payload);
+            Integer score = toScorePercent(item.getMatchingScore());
             String limit = formatLimit(resolveLimit(item, quote, userId));
             String riskNote = item.getStabilityScore() == null ? "" : "안정성 점수 " + item.getStabilityScore();
             List<RecommendEstimationDetailResponse> estimationDetails = buildEstimationDetails(item);
@@ -459,6 +467,15 @@ public class RecommendQueryService {
         return productRateService.estimateLimit(userId, quote);
     }
 
+    private Integer toScorePercent(java.math.BigDecimal score) {
+        if (score == null) {
+            return null;
+        }
+        return score.multiply(new java.math.BigDecimal("100"))
+                .setScale(0, java.math.RoundingMode.HALF_UP)
+                .intValue();
+    }
+
     private List<RecommendEstimationDetailResponse> buildEstimationDetails(RecoItem item) {
         if (item == null || item.getItemId() == null) {
             return Collections.emptyList();
@@ -510,6 +527,53 @@ public class RecommendQueryService {
         }
         List<RecoExclusionReason> reasons = recoExclusionReasonMapper.selectByResultId(history.getRecoResultId());
         return reasons == null ? Collections.emptyList() : reasons;
+    }
+
+    private Map<Long, List<RecoExclusionReason>> buildReasonMap(List<RecoExclusionReason> reasons) {
+        Map<Long, List<RecoExclusionReason>> map = new HashMap<>();
+        if (reasons == null || reasons.isEmpty()) {
+            return map;
+        }
+        for (RecoExclusionReason reason : reasons) {
+            if (reason == null || reason.getProductId() == null) {
+                continue;
+            }
+            map.computeIfAbsent(reason.getProductId(), key -> new ArrayList<>()).add(reason);
+        }
+        return map;
+    }
+
+    private String buildReasonText(List<RecoExclusionReason> reasons,
+                                   RecoItem item,
+                                   Map<String, Object> payload) {
+        if (reasons != null && !reasons.isEmpty()) {
+            List<String> messages = new ArrayList<>();
+            for (RecoExclusionReason reason : reasons) {
+                if (reason.getReasonText() == null) {
+                    continue;
+                }
+                String msg = reason.getReasonText().trim();
+                if (!msg.isBlank() && !messages.contains(msg)) {
+                    messages.add(msg);
+                }
+            }
+            if (!messages.isEmpty()) {
+                return String.join(", ", messages);
+            }
+        }
+        if (item != null && item.getReasonJsonPath() != null && !item.getReasonJsonPath().isBlank()) {
+            return item.getReasonJsonPath();
+        }
+        if (payload != null && payload.get("warnings") != null) {
+            Map<String, String> warnings = objectMapper.convertValue(
+                    payload.get("warnings"),
+                    new TypeReference<Map<String, String>>() {}
+            );
+            if (warnings != null && !warnings.isEmpty()) {
+                return String.join(", ", warnings.values());
+            }
+        }
+        return "";
     }
 
     private List<String> buildRiskNotes(RecommendHistory history) {

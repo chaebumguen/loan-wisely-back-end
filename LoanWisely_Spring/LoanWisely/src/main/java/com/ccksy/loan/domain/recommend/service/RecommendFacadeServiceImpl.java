@@ -13,6 +13,7 @@ import com.ccksy.loan.domain.recommend.entity.RecoRejectLog;
 import com.ccksy.loan.domain.recommend.entity.RecoRequest;
 import com.ccksy.loan.domain.recommend.entity.RecoResult;
 import com.ccksy.loan.domain.recommend.entity.RecommendHistory;
+import com.ccksy.loan.domain.recommend.filter.model.ExclusionReason;
 import com.ccksy.loan.domain.recommend.mapper.RecoEventLogMapper;
 import com.ccksy.loan.domain.recommend.mapper.RecoEstimationDetailMapper;
 import com.ccksy.loan.domain.recommend.mapper.RecoExclusionReasonMapper;
@@ -33,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
@@ -127,18 +129,38 @@ public class RecommendFacadeServiceImpl implements RecommendFacadeService {
             }
         }
 
-        if (result.getWarnings() != null && !result.getWarnings().isEmpty()
-                && result.getItems() != null && !result.getItems().isEmpty()) {
+        if (result.getItems() != null && !result.getItems().isEmpty()) {
             for (var item : result.getItems()) {
-                for (Map.Entry<String, String> entry : result.getWarnings().entrySet()) {
-                    RecoExclusionReason reason = RecoExclusionReason.builder()
+                Map<String, ExclusionReason> deduped = new LinkedHashMap<>();
+                if (item.getExclusionReasons() != null) {
+                    for (ExclusionReason reason : item.getExclusionReasons()) {
+                        if (reason == null || reason.getMessage() == null) {
+                            continue;
+                        }
+                        String key = reason.getMessage().trim();
+                        if (key.isBlank()) {
+                            continue;
+                        }
+                        deduped.putIfAbsent(key, reason);
+                    }
+                }
+                if (deduped.isEmpty() && result.getWarnings() != null) {
+                    for (Map.Entry<String, String> entry : result.getWarnings().entrySet()) {
+                        String msg = entry.getValue() == null ? "" : entry.getValue().trim();
+                        if (!msg.isBlank()) {
+                            deduped.putIfAbsent(msg, ExclusionReason.of(entry.getKey(), msg));
+                        }
+                    }
+                }
+                for (ExclusionReason reason : deduped.values()) {
+                    RecoExclusionReason entity = RecoExclusionReason.builder()
                             .resultId(recoResultId)
                             .productId(item.getProductId())
-                            .reasonCode(entry.getKey())
-                            .reasonText(entry.getValue())
+                            .reasonCode(reason.getCode())
+                            .reasonText(reason.getMessage())
                             .createdAt(now)
                             .build();
-                    recoExclusionReasonMapper.insert(reason);
+                    recoExclusionReasonMapper.insert(entity);
                 }
             }
         }

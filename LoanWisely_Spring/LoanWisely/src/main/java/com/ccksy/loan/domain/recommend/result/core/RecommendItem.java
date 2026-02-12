@@ -1,9 +1,11 @@
 package com.ccksy.loan.domain.recommend.result.core;
 
+import com.ccksy.loan.domain.recommend.filter.model.ExclusionReason;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Builder
@@ -11,8 +13,15 @@ public class RecommendItem {
 
     private Long productId;
 
-    private BigDecimal score;   // 적합도 점수(정렬 기준)
-    private BigDecimal minRate; // 금리 기준 정렬 시 사용(없으면 null)
+    // Matching score for sorting
+    private BigDecimal score;
 
-    private String briefReason; // 간단 사유(옵션)
+    // Minimum rate for sorting (nullable)
+    private BigDecimal minRate;
+
+    // Short reason text (optional)
+    private String briefReason;
+
+    // Product-specific exclusion reasons
+    private List<ExclusionReason> exclusionReasons;
 }

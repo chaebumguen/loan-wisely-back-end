@@ -73,8 +73,14 @@ public class ProductRateService {
         BigDecimal incomeFactor = new BigDecimal("0.45");
         BigDecimal ageFactor = ageFactor(lv1.getAge());
         BigDecimal ratePenalty = ratePenalty(quote);
+        BigDecimal rateMinPenalty = rateMinPenalty(quote);
+        BigDecimal productRateFactor = productRateFactor(quote);
 
-        BigDecimal limit = income.multiply(incomeFactor).multiply(ageFactor).multiply(ratePenalty);
+        BigDecimal limit = income.multiply(incomeFactor)
+                .multiply(ageFactor)
+                .multiply(ratePenalty)
+                .multiply(rateMinPenalty)
+                .multiply(productRateFactor);
         if (limit.compareTo(LIMIT_MIN) < 0) {
             limit = LIMIT_MIN;
         }
@@ -104,5 +110,82 @@ public class ProductRateService {
             return new BigDecimal("0.9");
         }
         return BigDecimal.ONE;
+    }
+
+    private BigDecimal rateMinPenalty(ProductRateQuote quote) {
+        if (quote == null || quote.getRateMin() == null) {
+            return BigDecimal.ONE;
+        }
+        BigDecimal rateMin = quote.getRateMin();
+        if (rateMin.compareTo(new BigDecimal("10")) >= 0) {
+            return new BigDecimal("0.92");
+        }
+        if (rateMin.compareTo(new BigDecimal("7")) >= 0) {
+            return new BigDecimal("0.96");
+        }
+        if (rateMin.compareTo(new BigDecimal("5")) >= 0) {
+            return new BigDecimal("0.98");
+        }
+        return BigDecimal.ONE;
+    }
+
+    private BigDecimal productRateFactor(ProductRateQuote quote) {
+        if (quote == null) {
+            return BigDecimal.ONE;
+        }
+        BigDecimal rateMin = quote.getRateMin();
+        BigDecimal rateMax = quote.getRateMax();
+        BigDecimal rateAvg = null;
+        if (rateMin != null && rateMax != null) {
+            rateAvg = rateMin.add(rateMax).divide(new BigDecimal("2"), 4, RoundingMode.HALF_UP);
+        } else if (rateMin != null) {
+            rateAvg = rateMin;
+        } else if (rateMax != null) {
+            rateAvg = rateMax;
+        }
+
+        BigDecimal avgFactor = BigDecimal.ONE;
+        if (rateAvg != null) {
+            avgFactor = BigDecimal.ONE.subtract(rateAvg.multiply(new BigDecimal("0.005")));
+            avgFactor = clamp(avgFactor, new BigDecimal("0.85"), new BigDecimal("1.05"));
+        }
+
+        BigDecimal spanFactor = BigDecimal.ONE;
+        if (rateMin != null && rateMax != null) {
+            BigDecimal span = rateMax.subtract(rateMin).abs();
+            spanFactor = BigDecimal.ONE.subtract(span.multiply(new BigDecimal("0.01")));
+            spanFactor = clamp(spanFactor, new BigDecimal("0.90"), BigDecimal.ONE);
+        }
+
+        BigDecimal typeFactor = BigDecimal.ONE;
+        if (quote.getRateType() != null) {
+            String type = quote.getRateType().toUpperCase();
+            if (type.contains("변동") || type.equals("C")) {
+                typeFactor = new BigDecimal("0.97");
+            } else if (type.contains("고정") || type.equals("F")) {
+                typeFactor = BigDecimal.ONE;
+            } else {
+                typeFactor = new BigDecimal("0.99");
+            }
+        }
+
+        BigDecimal scoreFactor = BigDecimal.ONE;
+        if (quote.getScoreBase() != null) {
+            BigDecimal base = quote.getScoreBase();
+            scoreFactor = BigDecimal.ONE.add(base.divide(new BigDecimal("1000"), 4, RoundingMode.HALF_UP));
+            scoreFactor = clamp(scoreFactor, new BigDecimal("0.90"), new BigDecimal("1.05"));
+        }
+
+        return avgFactor.multiply(spanFactor).multiply(typeFactor).multiply(scoreFactor);
+    }
+
+    private BigDecimal clamp(BigDecimal value, BigDecimal min, BigDecimal max) {
+        if (value.compareTo(min) < 0) {
+            return min;
+        }
+        if (value.compareTo(max) > 0) {
+            return max;
+        }
+        return value;
     }
 }

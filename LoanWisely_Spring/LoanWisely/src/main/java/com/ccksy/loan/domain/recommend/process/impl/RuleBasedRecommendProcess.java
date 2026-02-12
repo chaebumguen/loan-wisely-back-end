@@ -1,4 +1,4 @@
-﻿package com.ccksy.loan.domain.recommend.process.impl;
+package com.ccksy.loan.domain.recommend.process.impl;
 
 import com.ccksy.loan.domain.recommend.command.RecommendCommand;
 import com.ccksy.loan.domain.recommend.filter.chain.ChainFactory;
@@ -40,8 +40,8 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
- * v1: 猷?湲곕컲 異붿쿇 ?꾨줈?몄뒪(怨듦꺽)
- * - ?ㅼ젣 濡쒕뵫(UserProfile/UserConsent/Product 議고쉶/濡쒕뵫/?뺣젹)? ?ㅼ쓬 PART?먯꽌 ?곌껐
+ * v1: 룰기반 추천 프로세스(간단 버전)
+ * - 실제 환경의 UserProfile/UserConsent/Product 정보를 반영하는 초기 구조
  */
 @Component
 @Profile("!ml")
@@ -59,7 +59,7 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
     @Override
     protected RecommendResult doExecute(RecommendCommand command) {
 
-        // v1 理쒖냼 FilterContext(?ㅼ젣 媛믪? ?ㅼ쓬 PART?먯꽌 濡쒕뵫/feature濡?梨꾩?)
+        // v1 초기 FilterContext(실제 환경 요소를 단순 feature로 구성)
         RiskScoreResult risk = riskScoringService.score(command.getUserId(), command.getRequestedInputLevel());
 
         FilterContext filterContext = new FilterContext(
@@ -70,6 +70,8 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
                 risk.getLoanPurposeCode(),
                 LocalDateTime.now()
         );
+        log.info("RECO purpose debug userId={} inputLv={} loanPurposeCode={}", command.getUserId(),
+                command.getRequestedInputLevel(), risk.getLoanPurposeCode());
 
         boolean notReady = false;
         List<ExclusionReason> warnings = new ArrayList<>();
@@ -78,17 +80,26 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
             warnings.add(ExclusionReason.of("ELIGIBILITY_FAILED", "추천 기본 조건을 충족하지 않습니다."));
         }
 
-        // ?꾪꽣 泥댁씤(?꾩옱 湲곕낯 泥댁씤: creditScore/dsr媛 null?대㈃ ?쒖쇅 ?ъ쑀 諛쒖깮)
+        // 필터 체인 적용: creditScore/dsr 등 제외 사유 수집
         IneligibilityFilter chain = ChainFactory.createDefaultChain();
-        Optional<ExclusionReason> reason = chain.check(filterContext);
-
-        if (reason.isPresent()) {
+        List<ExclusionReason> chainReasons = chain.collect(filterContext);
+        if (!chainReasons.isEmpty()) {
             notReady = true;
-            warnings.add(reason.get());
+            warnings.addAll(chainReasons);
         }
 
-        // TODO: ?곹뭹 濡쒕뵫 + 議곌굔 濡쒖쭅 + ?뺣젹 + ?쒖쇅?ъ쑀(productId蹂?
+        // TODO: 정책 + 조합 로직 + 정렬 + 제외 사유(productId 기준)
         List<LoanProduct> candidates = loadCandidates(filterContext);
+        if (log.isInfoEnabled()) {
+            java.util.Set<String> distinctTypes = new java.util.HashSet<>();
+            for (LoanProduct p : candidates) {
+                if (p != null && p.getProductTypeCodeValueId() != null) {
+                    distinctTypes.add(p.getProductTypeCodeValueId().trim().toUpperCase());
+                }
+            }
+            log.info("RECO purpose debug candidates={} distinctTypes={}",
+                    candidates.size(), distinctTypes);
+        }
         if (candidates.isEmpty()) {
             var b = RecommendResultBuilder.notReady(command.getReproduceKey(), new NotReadyState().code())
                     .resolvedInputLevel(command.getRequestedInputLevel());
@@ -119,18 +130,56 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
             BigDecimal rateBonus = rateBonus(rateMin);
             BigDecimal totalScore = baseScore.add(rateBonus);
 
+            java.util.Set<String> allowedTypes = resolveAllowedProductTypes(filterContext.getLoanPurposeCode());
+            String actualType = product.getProductTypeCodeValueId();
+            if (allowedTypes != null && !allowedTypes.isEmpty() && actualType != null && !actualType.isBlank()) {
+                String actualUpper = actualType.trim().toUpperCase();
+                if (!actualUpper.isBlank()) {
+                    if (allowedTypes.contains(actualUpper)) {
+                        totalScore = totalScore.add(new BigDecimal("0.05"));
+                    } else {
+                        totalScore = totalScore.subtract(new BigDecimal("0.05"));
+                    }
+                }
+            }
+
             scores.put(productId, totalScore);
             rateMins.put(productId, rateMin);
         }
 
         List<Long> sorted = sortStrategy.sort(productIds, scores, rateMins);
         List<RecommendItem> items = new ArrayList<>();
+        Map<Long, LoanProduct> productById = new HashMap<>();
+        for (LoanProduct product : candidates) {
+            if (product.getProductId() != null) {
+                productById.put(product.getProductId(), product);
+            }
+        }
+
+        List<ExclusionReason> baseReasons = dedupeReasons(warnings);
+        Map<Long, Boolean> purposeMismatch = new HashMap<>();
+        for (Long productId : sorted) {
+            LoanProduct product = productById.get(productId);
+            ExclusionReason purposeReason = buildPurposeReason(filterContext, product);
+            purposeMismatch.put(productId, purposeReason != null);
+        }
+        sorted = reorderByPurpose(sorted, purposeMismatch);
+
         for (int i = 0; i < sorted.size() && i < MAX_RECOMMEND_ITEMS; i++) {
             Long productId = sorted.get(i);
             BigDecimal score = scores.getOrDefault(productId, BigDecimal.ZERO);
             BigDecimal rateMin = rateMins.get(productId);
-            String reasonText = "score=" + score + ", rateMin=" + rateMin;
-            items.add(RecommendItemBuilder.of(productId, score, rateMin, reasonText));
+            LoanProduct product = productById.get(productId);
+
+            List<ExclusionReason> reasons = new ArrayList<>(baseReasons);
+            ExclusionReason purposeReason = buildPurposeReason(filterContext, product);
+            if (purposeReason != null) {
+                reasons.add(purposeReason);
+            }
+            reasons = dedupeReasons(reasons);
+
+            String reasonText = buildReasonText(reasons);
+            items.add(RecommendItemBuilder.of(productId, score, rateMin, reasonText, reasons));
         }
 
         var b = (notReady
@@ -139,7 +188,7 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
                 .resolvedInputLevel(command.getRequestedInputLevel())
                 .items(items);
 
-        for (ExclusionReason warn : warnings) {
+        for (ExclusionReason warn : dedupeReasons(warnings)) {
             b = RecommendResultBuilder.addGlobalWarning(b, warn.getCode(), warn.getMessage());
         }
 
@@ -147,11 +196,6 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
     }
 
     private List<LoanProduct> loadCandidates(FilterContext filterContext) {
-        String productType = resolveProductType(filterContext.getLoanPurposeCode());
-        List<LoanProduct> list = loanProductMapper.selectList(null, productType, null, null);
-        if (list != null && !list.isEmpty()) {
-            return list;
-        }
         List<LoanProduct> all = loanProductMapper.selectList(null, null, null, null);
         return all == null ? new ArrayList<>() : all;
     }
@@ -167,24 +211,25 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
         ));
     }
 
-    private String resolveProductType(String purposeCode) {
+    private java.util.Set<String> resolveAllowedProductTypes(String purposeCode) {
         if (purposeCode == null || purposeCode.isBlank()) {
-            return null;
+            return java.util.Collections.emptySet();
         }
-        String v = purposeCode.toUpperCase();
-        if (v.contains("RENT") || v.contains("JEONSE") || v.contains("?꾩꽭") || v.contains("?붿꽭")) {
-            return "RENT";
+        String v = purposeCode.trim().toUpperCase();
+        if (v.contains("LIVING") || v.contains("생활") || v.contains("BUSINESS") || v.contains("사업")
+                || v.contains("CREDIT") || v.contains("신용")) {
+            return java.util.Set.of("CREDIT");
         }
-        if (v.contains("MORTGAGE") || v.contains("二쇳깮") || v.contains("二쇰떞") || v.contains("?대낫")) {
-            return "MORTGAGE";
+        if (v.contains("HOUSING") || v.contains("주택") || v.contains("모기지") || v.contains("MORTGAGE")) {
+            return java.util.Set.of("MORTGAGE", "RENT");
         }
-        if (v.contains("CREDIT") || v.contains("?좎슜")) {
-            return "CREDIT";
+        if (v.contains("RENT") || v.contains("JEONSE") || v.contains("전세") || v.contains("임대")) {
+            return java.util.Set.of("RENT", "MORTGAGE");
         }
         if (v.equals("CREDIT") || v.equals("MORTGAGE") || v.equals("RENT")) {
-            return v;
+            return java.util.Set.of(v);
         }
-        return null;
+        return java.util.Collections.emptySet();
     }
 
     private BigDecimal rateBonus(BigDecimal rateMin) {
@@ -202,6 +247,79 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
         }
         return BigDecimal.ZERO;
     }
+
+    private ExclusionReason buildPurposeReason(FilterContext ctx, LoanProduct product) {
+        if (ctx == null || product == null) {
+            return null;
+        }
+        java.util.Set<String> desired = resolveAllowedProductTypes(ctx.getLoanPurposeCode());
+        if (desired == null || desired.isEmpty()) {
+            return null;
+        }
+        String actual = product.getProductTypeCodeValueId();
+        if (actual == null || actual.isBlank()) {
+            return null;
+        }
+        String actualUpper = actual.trim().toUpperCase();
+        if (actualUpper.isBlank()) {
+            return null;
+        }
+        if (desired.contains(actualUpper)) {
+            return null;
+        }
+        return ExclusionReason.of("PURPOSE_NOT_ALLOWED", "대출 목적이 정책상 허용되지 않습니다.");
+    }
+
+    private List<ExclusionReason> dedupeReasons(List<ExclusionReason> reasons) {
+        if (reasons == null || reasons.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Map<String, ExclusionReason> deduped = new java.util.LinkedHashMap<>();
+        for (ExclusionReason reason : reasons) {
+            if (reason == null || reason.getMessage() == null) {
+                continue;
+            }
+            String key = reason.getMessage().trim();
+            if (key.isBlank()) {
+                continue;
+            }
+            deduped.putIfAbsent(key, reason);
+        }
+        return new ArrayList<>(deduped.values());
+    }
+
+    private String buildReasonText(List<ExclusionReason> reasons) {
+        if (reasons == null || reasons.isEmpty()) {
+            return "";
+        }
+        List<String> messages = new ArrayList<>();
+        for (ExclusionReason reason : reasons) {
+            if (reason == null || reason.getMessage() == null) {
+                continue;
+            }
+            String msg = reason.getMessage().trim();
+            if (!msg.isBlank()) {
+                messages.add(msg);
+            }
+        }
+        return String.join(", ", messages);
+    }
+
+    private List<Long> reorderByPurpose(List<Long> sorted, Map<Long, Boolean> purposeMismatch) {
+        if (sorted == null || sorted.isEmpty()) {
+            return sorted;
+        }
+        List<Long> matched = new ArrayList<>();
+        List<Long> mismatched = new ArrayList<>();
+        for (Long id : sorted) {
+            Boolean mismatch = purposeMismatch.get(id);
+            if (Boolean.TRUE.equals(mismatch)) {
+                mismatched.add(id);
+            } else {
+                matched.add(id);
+            }
+        }
+        matched.addAll(mismatched);
+        return matched;
+    }
 }
-
-
