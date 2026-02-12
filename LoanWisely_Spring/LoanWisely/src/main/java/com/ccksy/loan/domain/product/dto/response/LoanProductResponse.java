@@ -25,6 +25,12 @@ public class LoanProductResponse {
 
     private String note;
 
+    private String finPrdtCd;
+    private String finCoNo;
+    private String companyName;
+    private String joinWay;
+    private String cbName;
+
     private LocalDateTime addDate;
     private LocalDate endDate;
     private LocalDateTime updatedAt;
@@ -40,6 +46,11 @@ public class LoanProductResponse {
                 .collateralTypeCodeValueId(e.getCollateralTypeCodeValueId())
                 .rateTypeCodeValueId(e.getRateTypeCodeValueId())
                 .note(e.getNote())
+                .finPrdtCd(e.getFinPrdtCd())
+                .finCoNo(e.getFinCoNo())
+                .companyName(e.getCompanyName())
+                .joinWay(e.getJoinWay())
+                .cbName(e.getCbName())
                 .addDate(e.getAddDate())
                 .endDate(e.getEndDate())
                 .updatedAt(e.getUpdatedAt())

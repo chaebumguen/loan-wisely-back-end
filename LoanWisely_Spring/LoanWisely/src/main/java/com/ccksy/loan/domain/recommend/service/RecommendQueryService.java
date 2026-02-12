@@ -1,15 +1,19 @@
-package com.ccksy.loan.domain.recommend.service;
+﻿package com.ccksy.loan.domain.recommend.service;
 
 import com.ccksy.loan.common.exception.BusinessException;
 import com.ccksy.loan.common.exception.ErrorCode;
 import com.ccksy.loan.domain.product.entity.LoanProduct;
 import com.ccksy.loan.domain.product.mapper.LoanProductMapper;
+import com.ccksy.loan.domain.recommend.entity.RecoEventLog;
 import com.ccksy.loan.domain.recommend.entity.RecoExclusionReason;
 import com.ccksy.loan.domain.recommend.entity.RecoItem;
+import com.ccksy.loan.domain.recommend.entity.RecoRejectLog;
 import com.ccksy.loan.domain.recommend.entity.RecommendHistory;
+import com.ccksy.loan.domain.recommend.mapper.RecoEventLogMapper;
 import com.ccksy.loan.domain.recommend.mapper.RecoEstimationDetailMapper;
 import com.ccksy.loan.domain.recommend.mapper.RecoExclusionReasonMapper;
 import com.ccksy.loan.domain.recommend.mapper.RecoItemMapper;
+import com.ccksy.loan.domain.recommend.mapper.RecoRejectLogMapper;
 import com.ccksy.loan.domain.recommend.mapper.RecommendHistoryMapper;
 import com.ccksy.loan.domain.recommend.result.response.RecommendDetailInfoResponse;
 import com.ccksy.loan.domain.recommend.result.response.RecommendDetailResponse;
@@ -19,6 +23,7 @@ import com.ccksy.loan.domain.recommend.result.response.RecommendExplainSummaryRe
 import com.ccksy.loan.domain.recommend.result.response.RecommendProductResponse;
 import com.ccksy.loan.domain.recommend.result.response.RecommendationListItemResponse;
 import com.ccksy.loan.domain.recommend.result.response.RecommendationListResponse;
+import com.ccksy.loan.domain.recommend.result.response.RecommendationProductSummaryResponse;
 import com.ccksy.loan.domain.product.service.ProductRateQuote;
 import com.ccksy.loan.domain.product.service.ProductRateService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -32,6 +37,7 @@ import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -40,12 +46,15 @@ import java.util.Map;
 public class RecommendQueryService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final int LIST_PRODUCT_LIMIT = 3;
 
     private final RecommendHistoryMapper recommendHistoryMapper;
     private final LoanProductMapper loanProductMapper;
     private final RecoItemMapper recoItemMapper;
     private final RecoEstimationDetailMapper recoEstimationDetailMapper;
     private final RecoExclusionReasonMapper recoExclusionReasonMapper;
+    private final RecoEventLogMapper recoEventLogMapper;
+    private final RecoRejectLogMapper recoRejectLogMapper;
     private final ObjectMapper objectMapper;
     private final ProductRateService productRateService;
 
@@ -71,10 +80,13 @@ public class RecommendQueryService {
 
         List<RecommendationListItemResponse> items = new ArrayList<>();
         for (RecommendHistory history : slice) {
+            List<RecommendationProductSummaryResponse> productSummaries =
+                    buildProductSummaries(history, history.getUserId());
             items.add(RecommendationListItemResponse.builder()
                     .id(String.valueOf(history.getRecommendId()))
                     .title("Recommendation " + history.getRecommendId())
                     .createdAt(history.getCreatedAt() == null ? null : history.getCreatedAt().format(DATE_FORMAT))
+                    .products(productSummaries)
                     .build());
         }
 
@@ -93,9 +105,9 @@ public class RecommendQueryService {
         RecommendExplainSummaryResponse explain = buildExplainSummary(history, payload);
         List<RecommendProductResponse> products = buildProducts(history, payload, history.getUserId());
         RecommendDetailInfoResponse detail = RecommendDetailInfoResponse.builder()
-                .description(explain.getSummary() == null ? "추천 ?�세 ?�보가 ?�습?�다." : explain.getSummary())
-                .monthlyPaymentExample("???�환???�시???�공?��? ?�습?�다.")
-                .riskWarning("?�품�??�험 ?�내???�공?��? ?�습?�다.")
+                .description(explain.getSummary() == null ? "상품 상세 정보가 표시됩니다." : explain.getSummary())
+                .monthlyPaymentExample("월 상환액 예시가 표시됩니다.")
+                .riskWarning("고위험 조건 경고 및 승인 보장 아님 고지가 표시됩니다.")
                 .build();
 
         return RecommendDetailResponse.builder()
@@ -116,9 +128,9 @@ public class RecommendQueryService {
         RecommendExplainSummaryResponse explain = buildExplainSummary(history, payload);
         List<RecommendProductResponse> products = buildProducts(history, payload, history.getUserId());
         RecommendDetailInfoResponse detail = RecommendDetailInfoResponse.builder()
-                .description(explain.getSummary() == null ? "추천 ?�세 ?�보가 ?�습?�다." : explain.getSummary())
-                .monthlyPaymentExample("???�환???�시???�공?��? ?�습?�다.")
-                .riskWarning("?�품�??�험 ?�내???�공?��? ?�습?�다.")
+                .description(explain.getSummary() == null ? "상품 상세 정보가 표시됩니다." : explain.getSummary())
+                .monthlyPaymentExample("월 상환액 예시가 표시됩니다.")
+                .riskWarning("고위험 조건 경고 및 승인 보장 아님 고지가 표시됩니다.")
                 .build();
 
         return RecommendDetailResponse.builder()
@@ -126,6 +138,30 @@ public class RecommendQueryService {
                 .products(products)
                 .detail(detail)
                 .build();
+    }
+
+    public List<RecoEventLog> getEventLogs(Long productId) {
+        if (productId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "productId is required");
+        }
+        List<RecoEventLog> logs = recoEventLogMapper.selectByProductId(productId);
+        return logs == null ? Collections.emptyList() : logs;
+    }
+
+    public List<RecoRejectLog> getRejectLogs(Long requestId) {
+        if (requestId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "requestId is required");
+        }
+        List<RecoRejectLog> logs = recoRejectLogMapper.selectByRequestId(requestId);
+        return logs == null ? Collections.emptyList() : logs;
+    }
+
+    public List<RecoExclusionReason> getExclusionReasons(Long resultId) {
+        if (resultId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "resultId is required");
+        }
+        List<RecoExclusionReason> reasons = recoExclusionReasonMapper.selectByResultId(resultId);
+        return reasons == null ? Collections.emptyList() : reasons;
     }
     public RecommendExplainResponse getRecommendationExplain(Long userId, String recommendationId) {
         RecommendHistory history = getHistoryForUser(userId, recommendationId);
@@ -213,7 +249,7 @@ public class RecommendQueryService {
         List<RecommendProductResponse> products = new ArrayList<>();
         for (RecoItem item : recoItems) {
             Long productId = item.getProductId();
-            String productName = "?�품";
+            String productName = "대출 상품";
             String lenderName = "Provider";
 
             if (productId != null) {
@@ -234,7 +270,7 @@ public class RecommendQueryService {
             String reason = item.getReasonJsonPath();
             Integer score = item.getMatchingScore() == null ? null : item.getMatchingScore().intValue();
             String limit = formatLimit(resolveLimit(item, quote, userId));
-            String riskNote = item.getStabilityScore() == null ? "" : "?�정???�수 " + item.getStabilityScore();
+            String riskNote = item.getStabilityScore() == null ? "" : "안정성 점수 " + item.getStabilityScore();
             List<RecommendEstimationDetailResponse> estimationDetails = buildEstimationDetails(item);
 
             products.add(RecommendProductResponse.builder()
@@ -251,6 +287,38 @@ public class RecommendQueryService {
         }
 
         return products;
+    }
+
+    private List<RecommendationProductSummaryResponse> buildProductSummaries(RecommendHistory history, Long userId) {
+        List<RecoItem> recoItems = fetchRecoItems(history);
+        if (recoItems.isEmpty()) {
+            return Collections.emptyList();
+        }
+        recoItems.sort(Comparator.comparing(
+                RecoItem::getMatchingScore,
+                Comparator.nullsLast(Comparator.reverseOrder())
+        ));
+        int countLimit = Math.min(LIST_PRODUCT_LIMIT, recoItems.size());
+        List<RecommendationProductSummaryResponse> summaries = new ArrayList<>();
+        for (int i = 0; i < countLimit; i++) {
+            RecoItem item = recoItems.get(i);
+            Long productId = item.getProductId();
+            LoanProduct product = productId == null ? null : loanProductMapper.selectById(productId);
+            String productName = product == null || product.getProductName() == null
+                    ? "대출 상품"
+                    : product.getProductName();
+            ProductRateQuote quote = productRateService.getRateQuote(productId);
+            String rate = formatRate(resolveRateMin(item, quote), resolveRateMax(quote));
+            String limit = formatLimit(resolveLimit(item, quote, userId));
+            String repaymentMethod = resolveRepaymentMethod(product);
+            summaries.add(RecommendationProductSummaryResponse.builder()
+                    .productName(productName)
+                    .rate(rate)
+                    .limit(limit)
+                    .repaymentMethod(repaymentMethod)
+                    .build());
+        }
+        return summaries;
     }
 
     private List<String> buildReasons(RecommendHistory history, Map<String, Object> payload) {
@@ -335,7 +403,7 @@ public class RecommendQueryService {
 
     private String formatRate(java.math.BigDecimal minRate, java.math.BigDecimal maxRate) {
         if (minRate == null && maxRate == null) {
-            return "금리 ?�보 ?�음";
+            return "금리 정보 없음";
         }
         if (minRate != null && maxRate != null) {
             return "금리 " + minRate + " ~ " + maxRate;
@@ -348,9 +416,29 @@ public class RecommendQueryService {
 
     private String formatLimit(java.math.BigDecimal limit) {
         if (limit == null) {
-            return "?�도 ?�보 ?�음";
+            return "한도 정보 없음";
         }
         return limit.toString();
+    }
+
+    private String resolveRepaymentMethod(LoanProduct product) {
+        if (product == null) {
+            return "정보 없음";
+        }
+        String code = product.getRepaymentTypeCodeValueId();
+        if (code == null || code.isBlank() || "UNKNOWN".equalsIgnoreCase(code)) {
+            return "정보 없음";
+        }
+        if (code.startsWith("RPAY_TYPE_")) {
+            String key = code.substring("RPAY_TYPE_".length());
+            return switch (key) {
+                case "S" -> "만기일시상환";
+                case "D" -> "분할상환";
+                case "M" -> "혼합상환";
+                default -> "기타";
+            };
+        }
+        return code;
     }
 
     private java.math.BigDecimal resolveRateMin(RecoItem item, ProductRateQuote quote) {
@@ -432,7 +520,7 @@ public class RecommendQueryService {
         List<String> notes = new ArrayList<>();
         for (RecoItem item : items) {
             if (item.getStabilityScore() != null) {
-                notes.add("?�품 " + item.getProductId() + " ?�정???�수 " + item.getStabilityScore());
+                notes.add("상품 " + item.getProductId() + " 안정성 점수 " + item.getStabilityScore());
             }
         }
         return notes;
@@ -450,7 +538,7 @@ public class RecommendQueryService {
         List<RecommendProductResponse> products = new ArrayList<>();
         for (Map<String, Object> item : items) {
             Long productId = asLong(item.get("productId"));
-            String productName = "?�품";
+            String productName = "대출 상품";
             String lenderName = "Provider";
 
             if (productId != null) {
@@ -487,6 +575,7 @@ public class RecommendQueryService {
         return products;
     }
 }
+
 
 
 

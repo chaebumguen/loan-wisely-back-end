@@ -2,6 +2,10 @@
   port: 8080
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   application:
     name: LoanWisely
 
@@ -57,12 +61,18 @@ storage:
 product:
   external:
     fss:
-      credit-url: ${FSS_API_URL_CREDIT:}
-      api-key: ${FSS_API_KEY:}
-      api-key-param: ${FSS_API_KEY_PARAM:auth}
-      response-type: ${FSS_RESPONSE_TYPE:json}
-      top-fin-grp-nos: ${FSS_TOP_FIN_GRP_NOS:}
-      top-fin-grp-nos-credit: ${FSS_TOP_FIN_GRP_NOS_CREDIT:}
-      page-no: ${FSS_PAGE_NO:1}
-      finance-cd: ${FSS_FINANCE_CD:}
+      credit-url: "https://finlife.fss.or.kr/finlifeapi/creditLoanProductsSearch.json"
+      mortgage-url: "https://finlife.fss.or.kr/finlifeapi/mortgageLoanProductsSearch.json"
+      rent-url: "https://finlife.fss.or.kr/finlifeapi/rentHouseLoanProductsSearch.json"
+      api-key: "5322863ea75d0222687479c0f1b15b30"
+      api-key-param: "auth"
+      response-type: "json"
+      top-fin-grp-nos: ""
+      top-fin-grp-nos-credit: "020000,030200,050000,060000"
+      top-fin-grp-nos-mortgage: "020000,030200,050000,060000"
+      top-fin-grp-nos-rent: "020000,030200,050000,060000"
+      page-no: "1"
+      finance-cd: ""
+
+
 

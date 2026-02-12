@@ -61,6 +61,9 @@ public class RecommendFacadeServiceImpl implements RecommendFacadeService {
         if (lv1 == null) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED, "LV1 data is required");
         }
+        if (request.getRequestedInputLevel() == null) {
+            request.setRequestedInputLevel(1);
+        }
 
         RecommendCommand command = RecommendCommand.from(request);
         RecommendResult result = recommendCommandHandler.handle(command);

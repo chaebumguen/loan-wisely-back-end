@@ -39,14 +39,14 @@ public class RecommendController {
      * - 설계서에는 직접 명시되지 않으므로 추후 변경/폐기 가능
      */
     @GetMapping("/reproduce/{reproduceKey}")
-    public ApiResponse<RecommendResponse> reproduce(@PathVariable String reproduceKey) {
+    public ApiResponse<RecommendResponse> reproduce(@PathVariable("reproduceKey") String reproduceKey) {
         return ApiResponse.ok(recommendFacadeService.reproduce(reproduceKey));
     }
 
     @GetMapping("/{recommendationId}")
     public ApiResponse<RecommendDetailResponse> getDetail(
             Authentication authentication,
-            @PathVariable String recommendationId
+            @PathVariable("recommendationId") String recommendationId
     ) {
         Long userId = UserAuthUtil.requireUserId(authentication);
         return ApiResponse.ok(recommendQueryService.getRecommendationDetail(userId, recommendationId));
@@ -55,7 +55,7 @@ public class RecommendController {
     @GetMapping("/{recommendationId}/explain")
     public ApiResponse<RecommendExplainResponse> getExplain(
             Authentication authentication,
-            @PathVariable String recommendationId
+            @PathVariable("recommendationId") String recommendationId
     ) {
         Long userId = UserAuthUtil.requireUserId(authentication);
         return ApiResponse.ok(recommendQueryService.getRecommendationExplain(userId, recommendationId));

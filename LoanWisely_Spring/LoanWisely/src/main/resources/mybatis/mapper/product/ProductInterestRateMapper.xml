@@ -26,4 +26,24 @@
          WHERE ROWNUM = 1
     </select>
 
+    <insert id="insert" parameterType="com.ccksy.loan.domain.product.entity.ProductInterestRate">
+        INSERT INTO PRODUCT_INTEREST_RATE (
+            rate_id,
+            product_id,
+            rate_base,
+            rate_min,
+            rate_max,
+            as_of_date,
+            created_at
+        ) VALUES (
+            PRODUCT_INTEREST_RATE_SEQ.NEXTVAL,
+            #{productId},
+            #{rateBase},
+            #{rateMin},
+            #{rateMax},
+            #{asOfDate},
+            #{createdAt}
+        )
+    </insert>
+
 </mapper>

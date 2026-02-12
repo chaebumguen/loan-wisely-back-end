@@ -21,7 +21,7 @@ public class LoanProductController {
      * 상품 단건 조회
      */
     @GetMapping("/{productId}")
-    public ApiResponse<LoanProductResponse> getById(@PathVariable Long productId) {
+    public ApiResponse<LoanProductResponse> getById(@PathVariable("productId") Long productId) {
         return ApiResponse.ok(loanProductService.getById(productId));
     }
 
@@ -31,10 +31,10 @@ public class LoanProductController {
      */
     @GetMapping
     public ApiResponse<List<LoanProductResponse>> search(
-            @RequestParam(required = false) Long providerId,
-            @RequestParam(required = false) String productTypeCodeValueId,
-            @RequestParam(required = false) String loanTypeCodeValueId,
-            @RequestParam(required = false) String repaymentTypeCodeValueId
+            @RequestParam(name = "providerId", required = false) Long providerId,
+            @RequestParam(name = "productTypeCodeValueId", required = false) String productTypeCodeValueId,
+            @RequestParam(name = "loanTypeCodeValueId", required = false) String loanTypeCodeValueId,
+            @RequestParam(name = "repaymentTypeCodeValueId", required = false) String repaymentTypeCodeValueId
     ) {
         return ApiResponse.ok(
                 loanProductService.search(providerId, productTypeCodeValueId, loanTypeCodeValueId, repaymentTypeCodeValueId)

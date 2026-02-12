@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RawFileCell {
+    private Long cellId;
     private Long uploadId;
     private Long rowNum;
     private String columnName;

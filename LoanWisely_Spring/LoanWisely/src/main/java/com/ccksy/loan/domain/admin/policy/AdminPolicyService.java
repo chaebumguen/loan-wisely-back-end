@@ -2,6 +2,8 @@ package com.ccksy.loan.domain.admin.policy;
 
 import com.ccksy.loan.common.exception.BusinessException;
 import com.ccksy.loan.common.exception.ErrorCode;
+import com.ccksy.loan.domain.admin.approval.entity.ApprovalLog;
+import com.ccksy.loan.domain.admin.approval.mapper.ApprovalLogMapper;
 import com.ccksy.loan.domain.admin.policy.dto.PolicyCreateRequest;
 import com.ccksy.loan.domain.admin.policy.dto.PolicyDetailResponse;
 import com.ccksy.loan.domain.admin.policy.dto.PolicyDeployLogItem;
@@ -29,13 +31,16 @@ public class AdminPolicyService {
     private final RecoPolicyMapper policyMapper;
     private final ObjectMapper objectMapper;
     private final PolicyDeployLogMapper policyDeployLogMapper;
+    private final ApprovalLogMapper approvalLogMapper;
 
     public AdminPolicyService(RecoPolicyMapper policyMapper,
                               ObjectMapper objectMapper,
-                              PolicyDeployLogMapper policyDeployLogMapper) {
+                              PolicyDeployLogMapper policyDeployLogMapper,
+                              ApprovalLogMapper approvalLogMapper) {
         this.policyMapper = policyMapper;
         this.objectMapper = objectMapper;
         this.policyDeployLogMapper = policyDeployLogMapper;
+        this.approvalLogMapper = approvalLogMapper;
     }
 
     @Transactional(readOnly = true)
@@ -97,6 +102,7 @@ public class AdminPolicyService {
         if (policy == null) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Policy not found");
         }
+        logApproval(policyId, "APPROVE", null, approverId);
         policyMapper.approvePolicy(policyId, "APPROVED", approverId, LocalDateTime.now());
         return toDetail(policyMapper.selectById(policyId));
     }
@@ -219,5 +225,18 @@ public class AdminPolicyService {
                 .deployedAt(LocalDateTime.now())
                 .build();
         policyDeployLogMapper.insert(log);
+    }
+
+    private void logApproval(Long policyId, String action, String reason, String actorId) {
+        Long nextId = approvalLogMapper.selectNextId();
+        ApprovalLog log = ApprovalLog.builder()
+                .approvalId(nextId)
+                .targetId("POLICY-" + policyId)
+                .action(action)
+                .reason(reason)
+                .actorId(actorId)
+                .createdAt(LocalDateTime.now())
+                .build();
+        approvalLogMapper.insert(log);
     }
 }

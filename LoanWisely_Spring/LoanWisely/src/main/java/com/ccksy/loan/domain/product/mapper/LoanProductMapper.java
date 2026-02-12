@@ -11,6 +11,9 @@ public interface LoanProductMapper {
 
     LoanProduct selectById(@Param("productId") Long productId);
 
+    LoanProduct selectByExternalKey(@Param("finCoNo") String finCoNo,
+                                    @Param("finPrdtCd") String finPrdtCd);
+
     List<LoanProduct> selectList(@Param("providerId") Long providerId,
                                 @Param("productTypeCodeValueId") String productTypeCodeValueId,
                                 @Param("loanTypeCodeValueId") String loanTypeCodeValueId,

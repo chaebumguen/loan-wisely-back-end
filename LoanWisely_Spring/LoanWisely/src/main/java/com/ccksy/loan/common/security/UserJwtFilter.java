@@ -28,6 +28,7 @@ public class UserJwtFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         if (path.startsWith("/api/admin/")) return true;
         if (path.startsWith("/api/auth/")) return true;
+        if (path.startsWith("/api/dev/external-products/")) return true;
         if (path.startsWith("/health")) return true;
         if (path.startsWith("/internal/")) return true;
         if (path.startsWith("/api/internal/")) return true;

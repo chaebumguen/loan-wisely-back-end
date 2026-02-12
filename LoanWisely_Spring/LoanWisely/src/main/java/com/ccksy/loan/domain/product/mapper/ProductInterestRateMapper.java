@@ -8,4 +8,6 @@ import org.apache.ibatis.annotations.Param;
 public interface ProductInterestRateMapper {
 
     ProductInterestRate selectLatestByProductId(@Param("productId") Long productId);
+
+    int insert(ProductInterestRate rate);
 }

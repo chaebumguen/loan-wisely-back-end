@@ -14,30 +14,47 @@
             column_value,
             created_at
         )
-        <foreach collection="cells" item="cell" separator="UNION ALL">
-            SELECT
-                RAW_FILE_CELL_SEQ.NEXTVAL,
-                #{cell.uploadId},
-                #{cell.rowNum},
-                #{cell.columnName},
-                #{cell.columnValue},
-                #{cell.createdAt}
-            FROM dual
-        </foreach>
+        SELECT
+            RAW_FILE_CELL_SEQ.NEXTVAL,
+            t.upload_id,
+            t.row_num,
+            t.column_name,
+            t.column_value,
+            t.created_at
+        FROM (
+            <foreach collection="cells" item="cell" separator="UNION ALL">
+                SELECT
+                    #{cell.uploadId} AS upload_id,
+                    #{cell.rowNum} AS row_num,
+                    #{cell.columnName} AS column_name,
+                    #{cell.columnValue} AS column_value,
+                    #{cell.createdAt} AS created_at
+                FROM dual
+            </foreach>
+        ) t
     </insert>
 
-    <select id="selectByUploadId" parameterType="long" resultType="com.ccksy.loan.domain.admin.rawfile.entity.RawFileCell">
+    <select id="selectByUploadId" parameterType="long" resultMap="RawFileCellResultMap">
         SELECT
-            cell_id AS cellId,
-            upload_id AS uploadId,
-            row_num AS rowNum,
-            column_name AS columnName,
-            column_value AS columnValue,
-            created_at AS createdAt
+            cell_id,
+            upload_id,
+            row_num,
+            column_name,
+            column_value,
+            created_at
           FROM RAW_FILE_CELL
          WHERE upload_id = #{uploadId}
          ORDER BY row_num ASC, cell_id ASC
     </select>
+
+    <resultMap id="RawFileCellResultMap" type="com.ccksy.loan.domain.admin.rawfile.entity.RawFileCell">
+        <id     property="cellId"     column="cell_id"/>
+        <result property="uploadId"   column="upload_id"/>
+        <result property="rowNum"     column="row_num"/>
+        <result property="columnName" column="column_name"/>
+        <result property="columnValue" column="column_value"/>
+        <result property="createdAt"  column="created_at"/>
+    </resultMap>
 
     <delete id="deleteByUploadId" parameterType="long">
         DELETE FROM RAW_FILE_CELL WHERE upload_id = #{uploadId}

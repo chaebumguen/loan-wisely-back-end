@@ -1,0 +1,1 @@
+{"summary":"state=NOT_READY;inputLevel=1;policyVersion=POLICY-V1;metaVersion=META-V1","policyVersion":"POLICY-V1","createdAt":"2026-02-11T19:09:50.073879700","warnings":{"PURPOSE_NOT_ALLOWED":"대출 목적이 정책상 허용되지 않습니다."},"metaVersion":"META-V1","state":"NOT_READY","items":[],"resolvedInputLevel":1}

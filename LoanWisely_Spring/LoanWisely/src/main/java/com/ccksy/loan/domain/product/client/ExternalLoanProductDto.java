@@ -28,4 +28,12 @@ public class ExternalLoanProductDto {
     private String companyName;
     private String joinWay;
     private String loanInciExpn;
+    private String cbName;
+    private String productDetailType;
+    private String productDetailTypeName;
+    private String rateTypeName;
+    private java.math.BigDecimal rateMin;
+    private java.math.BigDecimal rateMax;
+    private java.math.BigDecimal rateBase;
+    private LocalDate asOfDate;
 }

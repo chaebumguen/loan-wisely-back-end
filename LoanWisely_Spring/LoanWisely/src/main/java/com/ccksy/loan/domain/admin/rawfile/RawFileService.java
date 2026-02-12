@@ -9,6 +9,7 @@ import com.ccksy.loan.domain.admin.rawfile.dto.RawFileUploadResponse;
 import com.ccksy.loan.domain.admin.rawfile.dto.RawFileValidateResponse;
 import com.ccksy.loan.domain.admin.rawfile.dto.RawFileEdaResponse;
 import com.ccksy.loan.domain.admin.rawfile.entity.EdaMetric;
+import com.ccksy.loan.domain.admin.rawfile.entity.EdaOutlierResult;
 import com.ccksy.loan.domain.admin.rawfile.entity.EdaRun;
 import com.ccksy.loan.domain.admin.rawfile.entity.EdaStatResult;
 import com.ccksy.loan.domain.admin.rawfile.entity.RawFileCell;
@@ -17,6 +18,7 @@ import com.ccksy.loan.domain.admin.rawfile.entity.RawFileRow;
 import com.ccksy.loan.domain.admin.rawfile.entity.RawFileUpload;
 import com.ccksy.loan.domain.admin.rawfile.entity.QualityIssue;
 import com.ccksy.loan.domain.admin.rawfile.mapper.EdaMetricMapper;
+import com.ccksy.loan.domain.admin.rawfile.mapper.EdaOutlierResultMapper;
 import com.ccksy.loan.domain.admin.rawfile.mapper.EdaRunMapper;
 import com.ccksy.loan.domain.admin.rawfile.mapper.EdaStatResultMapper;
 import com.ccksy.loan.domain.admin.rawfile.mapper.RawFileCellMapper;
@@ -47,9 +49,12 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class RawFileService {
+    private static final Logger log = LoggerFactory.getLogger(RawFileService.class);
 
     private static final DateTimeFormatter LIST_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -60,6 +65,7 @@ public class RawFileService {
     private final EdaRunMapper edaRunMapper;
     private final EdaMetricMapper edaMetricMapper;
     private final EdaStatResultMapper edaStatResultMapper;
+    private final EdaOutlierResultMapper edaOutlierResultMapper;
     private final QualityIssueMapper qualityIssueMapper;
     private final ProductRateSnapshotMapper productRateSnapshotMapper;
     private final Path storageDir;
@@ -73,6 +79,7 @@ public class RawFileService {
                           EdaRunMapper edaRunMapper,
                           EdaMetricMapper edaMetricMapper,
                           EdaStatResultMapper edaStatResultMapper,
+                          EdaOutlierResultMapper edaOutlierResultMapper,
                           QualityIssueMapper qualityIssueMapper,
                           ProductRateSnapshotMapper productRateSnapshotMapper,
                           @Value("${storage.raw-files-dir}") String storageDir,
@@ -85,6 +92,7 @@ public class RawFileService {
         this.edaRunMapper = edaRunMapper;
         this.edaMetricMapper = edaMetricMapper;
         this.edaStatResultMapper = edaStatResultMapper;
+        this.edaOutlierResultMapper = edaOutlierResultMapper;
         this.qualityIssueMapper = qualityIssueMapper;
         this.productRateSnapshotMapper = productRateSnapshotMapper;
         this.storageDir = Paths.get(storageDir);
@@ -142,6 +150,9 @@ public class RawFileService {
         if (upload == null) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Upload not found");
         }
+        if (!"INGESTED".equals(upload.getStatus()) && !"NORMALIZED".equals(upload.getStatus()) && !"EDA_DONE".equals(upload.getStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Ingest required before normalize");
+        }
         List<String> errors = validateFile(upload);
         if (errors.isEmpty()) {
             rawFileUploadMapper.updateStatus(uploadId, "VALIDATED");
@@ -151,22 +162,27 @@ public class RawFileService {
         return new RawFileValidateResponse(false, errors);
     }
 
-    @Transactional
+        @Transactional
     public RawFileIngestResponse ingest(Long uploadId) {
         RawFileUpload upload = rawFileUploadMapper.selectById(uploadId);
         if (upload == null) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Upload not found");
         }
+        if ("INGESTED".equals(upload.getStatus()) || "NORMALIZED".equals(upload.getStatus()) || "EDA_DONE".equals(upload.getStatus())) {
+            return new RawFileIngestResponse(0, 0);
+        }
         int inserted = ingestFile(upload);
         rawFileUploadMapper.updateStatus(uploadId, "INGESTED");
         return new RawFileIngestResponse(inserted, 0);
     }
-
     @Transactional
     public RawFileNormalizeResponse normalize(Long uploadId) {
         RawFileUpload upload = rawFileUploadMapper.selectById(uploadId);
         if (upload == null) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Upload not found");
+        }
+        if (!"INGESTED".equals(upload.getStatus()) && !"NORMALIZED".equals(upload.getStatus()) && !"EDA_DONE".equals(upload.getStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Ingest required before normalize");
         }
         List<RawFileCell> cells = rawFileCellMapper.selectByUploadId(uploadId);
         rawFileNormalizedMapper.deleteByUploadId(uploadId);
@@ -200,102 +216,96 @@ public class RawFileService {
         rawFileUploadMapper.updateStatus(uploadId, "NORMALIZED");
         return new RawFileNormalizeResponse(total, "NORMALIZED");
     }
-
     @Transactional
     public RawFileEdaResponse runEda(Long uploadId) {
-        RawFileUpload upload = rawFileUploadMapper.selectById(uploadId);
-        if (upload == null) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Upload not found");
-        }
-        List<RawFileCell> cells = rawFileCellMapper.selectByUploadId(uploadId);
-        if (cells == null || cells.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "No data to analyze");
-        }
+        try {
+            RawFileUpload upload = rawFileUploadMapper.selectById(uploadId);
+            if (upload == null) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "Upload not found");
+            }
+            if (!"NORMALIZED".equals(upload.getStatus()) && !"EDA_DONE".equals(upload.getStatus())) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "Normalize required before EDA");
+            }
+            List<RawFileCell> cells = rawFileCellMapper.selectByUploadId(uploadId);
+            if (cells == null || cells.isEmpty()) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "No data to analyze");
+            }
 
-        Long edaRunId = edaRunMapper.selectNextId();
-        EdaRun run = EdaRun.builder()
-                .edaRunId(edaRunId)
-                .userId(upload.getUploaderId())
-                .snapshotId(null)
-                .versionId(null)
-                .createdAt(LocalDateTime.now())
-                .build();
-        edaRunMapper.insert(run);
+            Long edaRunId = edaRunMapper.selectNextId();
+            EdaRun run = EdaRun.builder()
+                    .edaRunId(edaRunId)
+                    .userId(upload.getUploaderId())
+                    .snapshotId(null)
+                    .versionId(null)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            edaRunMapper.insert(run);
 
-        int totalRows = rawFileRowMapper.countByUploadId(uploadId);
-        Map<String, List<String>> columnValues = new HashMap<>();
-        for (RawFileCell cell : cells) {
-            columnValues.computeIfAbsent(cell.getColumnName(), key -> new ArrayList<>())
-                    .add(cell.getColumnValue());
-        }
+            Map<String, List<BigDecimal>> numericColumns = new HashMap<>();
+            Map<String, Integer> missingCounts = new HashMap<>();
+            Map<String, Integer> totalCounts = new HashMap<>();
+            Map<String, List<ColumnValue>> columnValues = new HashMap<>();
 
-        int metricCount = 0;
-        int issueCount = 0;
-        for (Map.Entry<String, List<String>> entry : columnValues.entrySet()) {
-            String column = entry.getKey();
-            List<String> values = entry.getValue();
-            int missing = 0;
-            List<BigDecimal> numeric = new ArrayList<>();
-            for (String v : values) {
-                if (v == null || v.isBlank()) {
-                    missing++;
+            for (RawFileCell cell : cells) {
+                String column = cell.getColumnName();
+                totalCounts.put(column, totalCounts.getOrDefault(column, 0) + 1);
+                if (cell.getColumnValue() == null || cell.getColumnValue().isBlank()) {
+                    missingCounts.put(column, missingCounts.getOrDefault(column, 0) + 1);
+                } else {
+                    columnValues.computeIfAbsent(column, key -> new ArrayList<>())
+                            .add(new ColumnValue(cell.getRowNum(), cell.getColumnValue()));
+                    BigDecimal value = parseDecimal(cell.getColumnValue());
+                    if (value != null) {
+                        numericColumns.computeIfAbsent(column, key -> new ArrayList<>()).add(value);
+                    }
+                }
+            }
+
+            int metricCount = 0;
+            int issueCount = 0;
+            int totalRows = rawFileRowMapper.countByUploadId(uploadId);
+
+            for (Map.Entry<String, List<BigDecimal>> entry : numericColumns.entrySet()) {
+                String column = entry.getKey();
+                List<BigDecimal> values = entry.getValue();
+                if (values.isEmpty()) {
                     continue;
                 }
-                try {
-                    numeric.add(new BigDecimal(v.trim()));
-                } catch (NumberFormatException ignored) {
-                    // non-numeric
-                }
-            }
-            BigDecimal mean = numeric.isEmpty() ? null : average(numeric);
-            BigDecimal min = numeric.isEmpty() ? null : numeric.stream().min(BigDecimal::compareTo).orElse(null);
-            BigDecimal max = numeric.isEmpty() ? null : numeric.stream().max(BigDecimal::compareTo).orElse(null);
-            BigDecimal missingRate = totalRows == 0
-                    ? BigDecimal.ZERO
-                    : new BigDecimal(missing).divide(new BigDecimal(totalRows), 6, java.math.RoundingMode.HALF_UP);
+                EdaStatResult stat = calculateStats(
+                        edaRunId,
+                        column,
+                        values,
+                        totalCounts.getOrDefault(column, 0),
+                        missingCounts.getOrDefault(column, 0)
+                );
+                edaStatResultMapper.insert(stat);
+                metricCount++;
 
-            Long statId = edaStatResultMapper.selectNextId();
-            EdaStatResult stat = EdaStatResult.builder()
-                    .statId(statId)
+                List<NumericPoint> points = buildNumericPoints(columnValues.getOrDefault(column, List.of()));
+                issueCount += createOutlierResults(edaRunId, column, points, stat.getQ1(), stat.getQ3());
+                issueCount += createQualityIssue(uploadId, column, stat.getMissingRate(), totalRows, missingCounts.getOrDefault(column, 0));
+            }
+
+            String summaryPath = writeEdaSummary(uploadId, edaRunId, totalRows, columnValues.size());
+            EdaMetric metric = EdaMetric.builder()
+                    .metricId(edaMetricMapper.selectNextId())
                     .edaRunId(edaRunId)
-                    .rowId(null)
-                    .columnCode(column)
-                    .mean(mean)
-                    .median(null)
-                    .std(null)
-                    .min(min)
-                    .max(max)
-                    .q1(null)
-                    .q3(null)
-                    .skewness(null)
-                    .kurtosis(null)
-                    .missingRate(missingRate)
-                    .dataType(numeric.isEmpty() ? "STRING" : "NUMBER")
+                    .metricName("summary")
+                    .metricType("EDA")
+                    .metricKey("SUMMARY")
+                    .metricValuePath(summaryPath)
+                    .createdAt(LocalDateTime.now())
                     .build();
-            edaStatResultMapper.insert(stat);
-            metricCount++;
+            edaMetricMapper.insert(metric);
 
-            if (missingRate.compareTo(new BigDecimal("0.30")) > 0) {
-                issueCount += createQualityIssue(uploadId, column, missingRate, totalRows, missing);
-            }
+            rawFileUploadMapper.updateStatus(uploadId, "EDA_DONE");
+            return new RawFileEdaResponse(edaRunId, metricCount, issueCount);
+        } catch (Exception ex) {
+            log.error("EDA failed for uploadId={}", uploadId, ex);
+            throw ex;
         }
-
-        String summaryPath = writeEdaSummary(uploadId, edaRunId, totalRows, columnValues.size());
-        EdaMetric metric = EdaMetric.builder()
-                .metricId(edaMetricMapper.selectNextId())
-                .edaRunId(edaRunId)
-                .metricName("summary")
-                .metricType("EDA")
-                .metricKey("SUMMARY")
-                .metricValuePath(summaryPath)
-                .createdAt(LocalDateTime.now())
-                .build();
-        edaMetricMapper.insert(metric);
-
-        return new RawFileEdaResponse(edaRunId, metricCount, issueCount);
     }
-
-    private String sha256(Path filePath) throws IOException {
+private String sha256(Path filePath) throws IOException {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] data = Files.readAllBytes(filePath);
@@ -424,6 +434,181 @@ public class RawFileService {
             sum = sum.add(v);
         }
         return sum.divide(new BigDecimal(values.size()), 6, java.math.RoundingMode.HALF_UP);
+    }
+
+    private EdaStatResult calculateStats(Long edaRunId,
+                                         String column,
+                                         List<BigDecimal> values,
+                                         int totalCount,
+                                         int missingCount) {
+        List<BigDecimal> sorted = new ArrayList<>(values);
+        sorted.sort(BigDecimal::compareTo);
+
+        BigDecimal mean = average(sorted);
+        BigDecimal med = median(sorted);
+        BigDecimal min = sorted.isEmpty() ? null : sorted.get(0);
+        BigDecimal max = sorted.isEmpty() ? null : sorted.get(sorted.size() - 1);
+        BigDecimal q1 = quartile(sorted, 0.25d);
+        BigDecimal q3 = quartile(sorted, 0.75d);
+        BigDecimal std = stddev(sorted, mean);
+        BigDecimal missingRate = totalCount == 0
+                ? BigDecimal.ZERO
+                : new BigDecimal(missingCount)
+                .divide(new BigDecimal(totalCount), 6, java.math.RoundingMode.HALF_UP);
+
+        return EdaStatResult.builder()
+                .statId(edaStatResultMapper.selectNextId())
+                .edaRunId(edaRunId)
+                .rowId(null)
+                .columnCode(column)
+                .mean(mean)
+                .median(med)
+                .std(std)
+                .min(min)
+                .max(max)
+                .q1(q1)
+                .q3(q3)
+                .skewness(null)
+                .kurtosis(null)
+                .missingRate(missingRate)
+                .dataType("NUMBER")
+                .build();
+    }
+
+    private BigDecimal median(List<BigDecimal> values) {
+        if (values.isEmpty()) return null;
+        List<BigDecimal> sorted = new ArrayList<>(values);
+        sorted.sort(BigDecimal::compareTo);
+        int n = sorted.size();
+        if (n % 2 == 1) {
+            return sorted.get(n / 2);
+        }
+        BigDecimal a = sorted.get((n / 2) - 1);
+        BigDecimal b = sorted.get(n / 2);
+        return a.add(b).divide(new BigDecimal(2), 6, java.math.RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal quartile(List<BigDecimal> values, double q) {
+        if (values.isEmpty()) return null;
+        List<BigDecimal> sorted = new ArrayList<>(values);
+        sorted.sort(BigDecimal::compareTo);
+        int n = sorted.size();
+        if (n == 1) {
+            return sorted.get(0);
+        }
+        double pos = q * (n - 1);
+        int idx = (int) Math.floor(pos);
+        int next = Math.min(idx + 1, n - 1);
+        double frac = pos - idx;
+        BigDecimal lower = sorted.get(idx);
+        BigDecimal upper = sorted.get(next);
+        if (frac == 0) {
+            return lower;
+        }
+        BigDecimal diff = upper.subtract(lower);
+        return lower.add(diff.multiply(new BigDecimal(frac))).setScale(6, java.math.RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal stddev(List<BigDecimal> values, BigDecimal mean) {
+        if (values.isEmpty() || mean == null) return null;
+        double m = mean.doubleValue();
+        double sum = 0.0;
+        for (BigDecimal v : values) {
+            double d = v.doubleValue() - m;
+            sum += d * d;
+        }
+        double variance = sum / values.size();
+        return new BigDecimal(Math.sqrt(variance)).setScale(6, java.math.RoundingMode.HALF_UP);
+    }
+
+    private int createOutlierResults(Long edaRunId,
+                                     String column,
+                                     List<NumericPoint> points,
+                                     BigDecimal q1,
+                                     BigDecimal q3) {
+        if (q1 == null || q3 == null) {
+            return 0;
+        }
+        if (points.isEmpty()) return 0;
+        BigDecimal iqr = q3.subtract(q1);
+        BigDecimal lower = q1.subtract(iqr.multiply(new BigDecimal("1.5")));
+        BigDecimal upper = q3.add(iqr.multiply(new BigDecimal("1.5")));
+        List<EdaOutlierResult> batch = new ArrayList<>();
+        int inserted = 0;
+        for (NumericPoint point : points) {
+            if (point.value().compareTo(lower) < 0 || point.value().compareTo(upper) > 0) {
+                EdaOutlierResult outlier = EdaOutlierResult.builder()
+                        .edaRunId(edaRunId)
+                        .rowId(point.rowNum())
+                        .columnCode(column)
+                        .methodCodeValueId("IQR")
+                        .flag("Y")
+                        .reason("IQR outlier")
+                        .build();
+                batch.add(outlier);
+                if (batch.size() >= 200) {
+                    edaOutlierResultMapper.insertBatch(batch);
+                    inserted += batch.size();
+                    batch.clear();
+                }
+            }
+        }
+        if (batch.isEmpty()) {
+            return inserted;
+        }
+        edaOutlierResultMapper.insertBatch(batch);
+        inserted += batch.size();
+        return inserted;
+    }
+
+    private static final class ColumnValue {
+        private final long rowNum;
+        private final String value;
+
+        private ColumnValue(long rowNum, String value) {
+            this.rowNum = rowNum;
+            this.value = value;
+        }
+
+        private long rowNum() {
+            return rowNum;
+        }
+
+        private String value() {
+            return value;
+        }
+    }
+
+    private List<NumericPoint> buildNumericPoints(List<ColumnValue> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        List<NumericPoint> points = new ArrayList<>();
+        for (ColumnValue value : values) {
+            BigDecimal parsed = parseDecimal(value.value());
+            if (parsed != null) {
+                points.add(new NumericPoint(value.rowNum(), parsed));
+            }
+        }
+        return points;
+    }
+
+    private static final class NumericPoint {
+        private final long rowNum;
+        private final BigDecimal value;
+
+        private NumericPoint(long rowNum, BigDecimal value) {
+            this.rowNum = rowNum;
+            this.value = value;
+        }
+
+        private long rowNum() {
+            return rowNum;
+        }
+
+        private BigDecimal value() {
+            return value;
+        }
     }
 
     private int createQualityIssue(Long uploadId,
@@ -618,3 +803,9 @@ public class RawFileService {
         }
     }
 }
+
+
+
+
+
+
