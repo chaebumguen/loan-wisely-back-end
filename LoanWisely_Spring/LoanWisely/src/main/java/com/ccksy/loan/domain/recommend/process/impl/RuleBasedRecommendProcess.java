@@ -1,4 +1,4 @@
-package com.ccksy.loan.domain.recommend.process.impl;
+﻿package com.ccksy.loan.domain.recommend.process.impl;
 
 import com.ccksy.loan.domain.recommend.command.RecommendCommand;
 import com.ccksy.loan.domain.recommend.filter.chain.ChainFactory;
@@ -40,8 +40,8 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
- * v1: 룰기반 추천 프로세스(간단 버전)
- * - 실제 환경의 UserProfile/UserConsent/Product 정보를 반영하는 초기 구조
+ * v1: 猷곌린諛?異붿쿇 ?꾨줈?몄뒪(媛꾨떒 踰꾩쟾)
+ * - ?ㅼ젣 ?섍꼍??UserProfile/UserConsent/Product ?뺣낫瑜?諛섏쁺?섎뒗 珥덇린 援ъ“
  */
 @Component
 @Profile("!ml")
@@ -55,11 +55,12 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
     private final ProductRateService productRateService;
 
     private static final int MAX_RECOMMEND_ITEMS = 10;
+    private static final int MAX_EXCLUDED_ITEMS = 20;
 
     @Override
     protected RecommendResult doExecute(RecommendCommand command) {
 
-        // v1 초기 FilterContext(실제 환경 요소를 단순 feature로 구성)
+        // v1 珥덇린 FilterContext(?ㅼ젣 ?섍꼍 ?붿냼瑜??⑥닚 feature濡?援ъ꽦)
         RiskScoreResult risk = riskScoringService.score(command.getUserId(), command.getRequestedInputLevel());
 
         FilterContext filterContext = new FilterContext(
@@ -77,10 +78,10 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
         List<ExclusionReason> warnings = new ArrayList<>();
         if (!eligibilityPolicy.isEligible(filterContext)) {
             notReady = true;
-            warnings.add(ExclusionReason.of("ELIGIBILITY_FAILED", "추천 기본 조건을 충족하지 않습니다."));
+            warnings.add(ExclusionReason.of("ELIGIBILITY_FAILED", "異붿쿇 湲곕낯 議곌굔??異⑹”?섏? ?딆뒿?덈떎."));
         }
 
-        // 필터 체인 적용: creditScore/dsr 등 제외 사유 수집
+        // ?꾪꽣 泥댁씤 ?곸슜: creditScore/dsr ???쒖쇅 ?ъ쑀 ?섏쭛
         IneligibilityFilter chain = ChainFactory.createDefaultChain();
         List<ExclusionReason> chainReasons = chain.collect(filterContext);
         if (!chainReasons.isEmpty()) {
@@ -88,7 +89,7 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
             warnings.addAll(chainReasons);
         }
 
-        // TODO: 정책 + 조합 로직 + 정렬 + 제외 사유(productId 기준)
+        // TODO: ?뺤콉 + 議고빀 濡쒖쭅 + ?뺣젹 + ?쒖쇅 ?ъ쑀(productId 湲곗?)
         List<LoanProduct> candidates = loadCandidates(filterContext);
         if (log.isInfoEnabled()) {
             java.util.Set<String> distinctTypes = new java.util.HashSet<>();
@@ -103,7 +104,7 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
         if (candidates.isEmpty()) {
             var b = RecommendResultBuilder.notReady(command.getReproduceKey(), new NotReadyState().code())
                     .resolvedInputLevel(command.getRequestedInputLevel());
-            b = RecommendResultBuilder.addGlobalWarning(b, "NO_PRODUCT", "추천 가능한 상품이 없습니다.");
+            b = RecommendResultBuilder.addGlobalWarning(b, "NO_PRODUCT", "異붿쿇 媛?ν븳 ?곹뭹???놁뒿?덈떎.");
             for (ExclusionReason warn : warnings) {
                 b = RecommendResultBuilder.addGlobalWarning(b, warn.getCode(), warn.getMessage());
             }
@@ -158,15 +159,29 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
 
         List<ExclusionReason> baseReasons = dedupeReasons(warnings);
         Map<Long, Boolean> purposeMismatch = new HashMap<>();
+        List<Long> matched = new ArrayList<>();
+        List<Long> mismatched = new ArrayList<>();
         for (Long productId : sorted) {
             LoanProduct product = productById.get(productId);
             ExclusionReason purposeReason = buildPurposeReason(filterContext, product);
-            purposeMismatch.put(productId, purposeReason != null);
+            boolean mismatch = purposeReason != null;
+            purposeMismatch.put(productId, mismatch);
+            if (mismatch) {
+                mismatched.add(productId);
+            } else {
+                matched.add(productId);
+            }
         }
-        sorted = reorderByPurpose(sorted, purposeMismatch);
 
-        for (int i = 0; i < sorted.size() && i < MAX_RECOMMEND_ITEMS; i++) {
-            Long productId = sorted.get(i);
+        List<Long> finalIds = new ArrayList<>();
+        for (int i = 0; i < matched.size() && i < MAX_RECOMMEND_ITEMS; i++) {
+            finalIds.add(matched.get(i));
+        }
+        for (int i = 0; i < mismatched.size() && i < MAX_EXCLUDED_ITEMS; i++) {
+            finalIds.add(mismatched.get(i));
+        }
+
+        for (Long productId : finalIds) {
             BigDecimal score = scores.getOrDefault(productId, BigDecimal.ZERO);
             BigDecimal rateMin = rateMins.get(productId);
             LoanProduct product = productById.get(productId);
@@ -216,14 +231,17 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
             return java.util.Collections.emptySet();
         }
         String v = purposeCode.trim().toUpperCase();
-        if (v.contains("LIVING") || v.contains("생활") || v.contains("BUSINESS") || v.contains("사업")
+        if (v.contains("LIVING") || v.contains("생활")
+                || v.contains("BUSINESS") || v.contains("사업")
                 || v.contains("CREDIT") || v.contains("신용")) {
             return java.util.Set.of("CREDIT");
         }
-        if (v.contains("HOUSING") || v.contains("주택") || v.contains("모기지") || v.contains("MORTGAGE")) {
+        if (v.contains("HOUSING") || v.contains("주택")
+                || v.contains("모기지") || v.contains("MORTGAGE")) {
             return java.util.Set.of("MORTGAGE", "RENT");
         }
-        if (v.contains("RENT") || v.contains("JEONSE") || v.contains("전세") || v.contains("임대")) {
+        if (v.contains("RENT") || v.contains("JEONSE")
+                || v.contains("전세") || v.contains("임대")) {
             return java.util.Set.of("RENT", "MORTGAGE");
         }
         if (v.equals("CREDIT") || v.equals("MORTGAGE") || v.equals("RENT")) {
@@ -323,3 +341,4 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
         return matched;
     }
 }
+

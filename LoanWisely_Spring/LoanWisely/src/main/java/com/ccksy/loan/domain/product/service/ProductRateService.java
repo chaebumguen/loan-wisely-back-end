@@ -84,8 +84,9 @@ public class ProductRateService {
         if (limit.compareTo(LIMIT_MIN) < 0) {
             limit = LIMIT_MIN;
         }
-        if (limit.compareTo(LIMIT_MAX) > 0) {
-            limit = LIMIT_MAX;
+        BigDecimal dynamicMax = dynamicLimitMax(quote);
+        if (limit.compareTo(dynamicMax) > 0) {
+            limit = dynamicMax;
         }
         return limit.divide(ROUND_UNIT, 0, RoundingMode.DOWN).multiply(ROUND_UNIT);
     }
@@ -127,6 +128,23 @@ public class ProductRateService {
             return new BigDecimal("0.98");
         }
         return BigDecimal.ONE;
+    }
+
+    private BigDecimal dynamicLimitMax(ProductRateQuote quote) {
+        if (quote == null || quote.getRateMax() == null) {
+            return LIMIT_MAX;
+        }
+        BigDecimal rateMax = quote.getRateMax();
+        if (rateMax.compareTo(new BigDecimal("12")) >= 0) {
+            return new BigDecimal("30000000");
+        }
+        if (rateMax.compareTo(new BigDecimal("8")) >= 0) {
+            return new BigDecimal("50000000");
+        }
+        if (rateMax.compareTo(new BigDecimal("5")) >= 0) {
+            return new BigDecimal("100000000");
+        }
+        return LIMIT_MAX;
     }
 
     private BigDecimal productRateFactor(ProductRateQuote quote) {

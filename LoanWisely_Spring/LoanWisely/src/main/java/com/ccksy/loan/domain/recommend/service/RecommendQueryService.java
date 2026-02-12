@@ -471,7 +471,13 @@ public class RecommendQueryService {
         if (score == null) {
             return null;
         }
-        return score.multiply(new java.math.BigDecimal("100"))
+        java.math.BigDecimal normalized = score;
+        if (normalized.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            normalized = java.math.BigDecimal.ZERO;
+        } else if (normalized.compareTo(java.math.BigDecimal.ONE) > 0) {
+            normalized = java.math.BigDecimal.ONE;
+        }
+        return normalized.multiply(new java.math.BigDecimal("100"))
                 .setScale(0, java.math.RoundingMode.HALF_UP)
                 .intValue();
     }
@@ -563,15 +569,6 @@ public class RecommendQueryService {
         }
         if (item != null && item.getReasonJsonPath() != null && !item.getReasonJsonPath().isBlank()) {
             return item.getReasonJsonPath();
-        }
-        if (payload != null && payload.get("warnings") != null) {
-            Map<String, String> warnings = objectMapper.convertValue(
-                    payload.get("warnings"),
-                    new TypeReference<Map<String, String>>() {}
-            );
-            if (warnings != null && !warnings.isEmpty()) {
-                return String.join(", ", warnings.values());
-            }
         }
         return "";
     }
