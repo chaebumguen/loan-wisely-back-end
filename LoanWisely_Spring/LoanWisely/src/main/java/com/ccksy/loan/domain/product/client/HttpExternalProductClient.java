@@ -383,55 +383,112 @@ public class HttpExternalProductClient implements ExternalProductClient {
         if (options == null || options.isEmpty()) {
             return null;
         }
-        BigDecimal min = null;
-        BigDecimal max = null;
-        String rateTypeName = null;
+        Map<String, RateStats> byType = new HashMap<>();
         for (FssCreditOption opt : options) {
-            if (rateTypeName == null && opt.crdt_lend_rate_type_nm != null && !opt.crdt_lend_rate_type_nm.isBlank()) {
-                rateTypeName = opt.crdt_lend_rate_type_nm;
-            }
+            String typeCode = opt.crdt_lend_rate_type;
+            String typeName = opt.crdt_lend_rate_type_nm;
+            RateStats stats = byType.computeIfAbsent(
+                    typeCode == null ? "" : typeCode.trim().toUpperCase(),
+                    k -> new RateStats(null, null, null, typeName)
+            );
             for (String val : opt.gradeRates()) {
                 BigDecimal v = parseDecimal(val);
                 if (v == null) continue;
-                if (min == null || v.compareTo(min) < 0) min = v;
-                if (max == null || v.compareTo(max) > 0) max = v;
+                if (stats.min == null || v.compareTo(stats.min) < 0) stats.min = v;
+                if (stats.max == null || v.compareTo(stats.max) > 0) stats.max = v;
             }
+            if (stats.rateTypeName == null && typeName != null && !typeName.isBlank()) {
+                stats.rateTypeName = typeName;
+            }
+        }
+
+        RateStats loanRate = byType.get("A");
+        if (loanRate != null && (loanRate.min != null || loanRate.max != null)) {
+            loanRate.rateTypeName = loanRate.rateTypeName == null ? "대출금리" : loanRate.rateTypeName;
+            return loanRate;
+        }
+
+        RateStats base = byType.get("B");
+        RateStats add = byType.get("C");
+        RateStats adj = byType.get("D");
+        if (base == null || add == null) {
+            return null;
+        }
+        BigDecimal min = null;
+        BigDecimal max = null;
+        if (base.min != null && add.min != null) {
+            BigDecimal dMax = adj == null ? BigDecimal.ZERO : (adj.max == null ? BigDecimal.ZERO : adj.max);
+            min = base.min.add(add.min).subtract(dMax);
+        }
+        if (base.max != null && add.max != null) {
+            BigDecimal dMin = adj == null ? BigDecimal.ZERO : (adj.min == null ? BigDecimal.ZERO : adj.min);
+            max = base.max.add(add.max).subtract(dMin);
         }
         if (min == null && max == null) {
             return null;
         }
-        return new RateStats(min, max, null, rateTypeName);
+        return new RateStats(min, max, null, "대출금리");
     }
 
     private RateStats computeRateStatsGeneric(List<com.fasterxml.jackson.databind.JsonNode> options) {
         if (options == null || options.isEmpty()) {
             return null;
         }
-        BigDecimal min = null;
-        BigDecimal max = null;
-        BigDecimal base = null;
-        String rateTypeName = null;
+        Map<String, RateStats> byType = new HashMap<>();
         for (com.fasterxml.jackson.databind.JsonNode opt : options) {
-            if (rateTypeName == null) {
-                rateTypeName = pickText(opt, "lend_rate_type_nm", "intr_rate_type_nm", "rate_type_nm");
-            }
+            String typeCode = pickText(opt, "lend_rate_type", "intr_rate_type", "rate_type");
+            String typeName = pickText(opt, "lend_rate_type_nm", "intr_rate_type_nm", "rate_type_nm");
+            String key = typeCode == null ? "" : typeCode.trim().toUpperCase();
+            RateStats stats = byType.computeIfAbsent(key, k -> new RateStats(null, null, null, typeName));
+
             BigDecimal vMin = pickDecimal(opt, "lend_rate_min", "intr_rate_min", "rate_min", "rent_rate_min", "rent_rate");
             BigDecimal vMax = pickDecimal(opt, "lend_rate_max", "intr_rate_max", "rate_max", "rent_rate_max", "rent_rate");
             BigDecimal vBase = pickDecimal(opt, "lend_rate_avg", "intr_rate", "rate_avg", "rate_base", "rent_rate_avg", "rent_rate");
             if (vMin != null) {
-                min = (min == null || vMin.compareTo(min) < 0) ? vMin : min;
+                stats.min = (stats.min == null || vMin.compareTo(stats.min) < 0) ? vMin : stats.min;
             }
             if (vMax != null) {
-                max = (max == null || vMax.compareTo(max) > 0) ? vMax : max;
+                stats.max = (stats.max == null || vMax.compareTo(stats.max) > 0) ? vMax : stats.max;
             }
-            if (base == null && vBase != null) {
-                base = vBase;
+            if (stats.base == null && vBase != null) {
+                stats.base = vBase;
+            }
+            if (stats.rateTypeName == null && typeName != null && !typeName.isBlank()) {
+                stats.rateTypeName = typeName;
             }
         }
-        if (min == null && max == null && base == null) {
+
+        RateStats loanRate = byType.get("A");
+        if (loanRate != null && (loanRate.min != null || loanRate.max != null || loanRate.base != null)) {
+            loanRate.rateTypeName = loanRate.rateTypeName == null ? "대출금리" : loanRate.rateTypeName;
+            return loanRate;
+        }
+
+        RateStats base = byType.get("B");
+        RateStats add = byType.get("C");
+        RateStats adj = byType.get("D");
+        if (base == null || add == null) {
             return null;
         }
-        return new RateStats(min, max, base, rateTypeName);
+        BigDecimal min = null;
+        BigDecimal max = null;
+        BigDecimal baseRate = null;
+        if (base.min != null && add.min != null) {
+            BigDecimal dMax = adj == null ? BigDecimal.ZERO : (adj.max == null ? BigDecimal.ZERO : adj.max);
+            min = base.min.add(add.min).subtract(dMax);
+        }
+        if (base.max != null && add.max != null) {
+            BigDecimal dMin = adj == null ? BigDecimal.ZERO : (adj.min == null ? BigDecimal.ZERO : adj.min);
+            max = base.max.add(add.max).subtract(dMin);
+        }
+        if (base.base != null && add.base != null) {
+            BigDecimal dBase = adj == null ? BigDecimal.ZERO : (adj.base == null ? BigDecimal.ZERO : adj.base);
+            baseRate = base.base.add(add.base).subtract(dBase);
+        }
+        if (min == null && max == null && baseRate == null) {
+            return null;
+        }
+        return new RateStats(min, max, baseRate, "대출금리");
     }
 
     private BigDecimal pickDecimal(com.fasterxml.jackson.databind.JsonNode node, String... keys) {
@@ -513,6 +570,7 @@ public class HttpExternalProductClient implements ExternalProductClient {
     private static class FssCreditOption {
         public String fin_prdt_cd;
         public String fin_co_no;
+        public String crdt_lend_rate_type;
         public String crdt_lend_rate_type_nm;
         public String crdt_grad_1;
         public String crdt_grad_4;
@@ -538,10 +596,10 @@ public class HttpExternalProductClient implements ExternalProductClient {
     }
 
     private static class RateStats {
-        final BigDecimal min;
-        final BigDecimal max;
-        final BigDecimal base;
-        final String rateTypeName;
+        BigDecimal min;
+        BigDecimal max;
+        BigDecimal base;
+        String rateTypeName;
 
         RateStats(BigDecimal min, BigDecimal max, BigDecimal base, String rateTypeName) {
             this.min = min;

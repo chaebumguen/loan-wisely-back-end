@@ -34,7 +34,7 @@ public class UserAuthServiceImpl implements UserAuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public UserLoginResponse login(UserLoginRequest request) {
         request.assertRequiredFields();
 

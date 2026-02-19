@@ -1,4 +1,4 @@
-﻿package com.ccksy.loan.domain.recommend.process.impl;
+package com.ccksy.loan.domain.recommend.process.impl;
 
 import com.ccksy.loan.domain.recommend.command.RecommendCommand;
 import com.ccksy.loan.domain.recommend.filter.chain.ChainFactory;
@@ -56,6 +56,8 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
 
     private static final int MAX_RECOMMEND_ITEMS = 10;
     private static final int MAX_EXCLUDED_ITEMS = 20;
+    private static final BigDecimal DSR_MAX = new BigDecimal("0.40");
+    private static final BigDecimal DSR_PENALTY_FACTOR = new BigDecimal("0.20");
 
     @Override
     protected RecommendResult doExecute(RecommendCommand command) {
@@ -130,6 +132,10 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
             BigDecimal rateMin = quote != null ? quote.getRateMin() : null;
             BigDecimal rateBonus = rateBonus(rateMin);
             BigDecimal totalScore = baseScore.add(rateBonus);
+            BigDecimal dsr = filterContext.getDsr();
+            if (dsr != null && dsr.compareTo(DSR_MAX) > 0) {
+                totalScore = totalScore.multiply(DSR_PENALTY_FACTOR);
+            }
 
             java.util.Set<String> allowedTypes = resolveAllowedProductTypes(filterContext.getLoanPurposeCode());
             String actualType = product.getProductTypeCodeValueId();

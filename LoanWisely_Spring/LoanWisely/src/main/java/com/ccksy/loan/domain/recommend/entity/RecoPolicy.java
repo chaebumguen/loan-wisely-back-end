@@ -1,4 +1,4 @@
-﻿package com.ccksy.loan.domain.recommend.entity;
+package com.ccksy.loan.domain.recommend.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

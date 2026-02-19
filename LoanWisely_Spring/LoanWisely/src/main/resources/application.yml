@@ -22,7 +22,9 @@ spring:
     clean-disabled: false
     clean-on-validation-error: false
     validate-on-migrate: true
-    # schemas는 환경에 맞게 필요 시에만 사용
+    table: FLYWAY_SCHEMA_HISTORY
+    default-schema: C##PROTOV4
+    schemas: C##PROTOV4
 
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml

@@ -1,4 +1,4 @@
-﻿package com.ccksy.loan.domain.recommend.filter.chain;
+package com.ccksy.loan.domain.recommend.filter.chain;
 
 import java.math.BigDecimal;
 import java.util.Set;

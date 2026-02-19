@@ -1,4 +1,4 @@
-﻿package com.ccksy.loan.domain.product.entity;
+package com.ccksy.loan.domain.product.entity;
 
 import com.ccksy.loan.domain.product.dto.request.LoanProductRequest;
 import lombok.*;

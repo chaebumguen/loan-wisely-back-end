@@ -1,4 +1,4 @@
-﻿package com.ccksy.loan.domain.recommend.service;
+package com.ccksy.loan.domain.recommend.service;
 
 import com.ccksy.loan.common.exception.BusinessException;
 import com.ccksy.loan.common.exception.ErrorCode;
