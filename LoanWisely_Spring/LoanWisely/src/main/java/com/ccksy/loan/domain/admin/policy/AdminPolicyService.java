@@ -12,6 +12,7 @@ import com.ccksy.loan.domain.admin.policy.entity.PolicyDeployLog;
 import com.ccksy.loan.domain.admin.policy.mapper.PolicyDeployLogMapper;
 import com.ccksy.loan.domain.recommend.entity.RecoPolicy;
 import com.ccksy.loan.domain.recommend.mapper.RecoPolicyMapper;
+import com.ccksy.loan.infra.elasticsearch.EsRecoPolicyService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -32,15 +33,18 @@ public class AdminPolicyService {
     private final ObjectMapper objectMapper;
     private final PolicyDeployLogMapper policyDeployLogMapper;
     private final ApprovalLogMapper approvalLogMapper;
+    private final EsRecoPolicyService esRecoPolicyService;
 
     public AdminPolicyService(RecoPolicyMapper policyMapper,
                               ObjectMapper objectMapper,
                               PolicyDeployLogMapper policyDeployLogMapper,
-                              ApprovalLogMapper approvalLogMapper) {
+                              ApprovalLogMapper approvalLogMapper,
+                              EsRecoPolicyService esRecoPolicyService) {
         this.policyMapper = policyMapper;
         this.objectMapper = objectMapper;
         this.policyDeployLogMapper = policyDeployLogMapper;
         this.approvalLogMapper = approvalLogMapper;
+        this.esRecoPolicyService = esRecoPolicyService;
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +79,9 @@ public class AdminPolicyService {
                 .createdAt(LocalDateTime.now())
                 .build();
         policyMapper.insert(policy);
-        return toDetail(policyMapper.selectById(nextId));
+        RecoPolicy created = policyMapper.selectById(nextId);
+        esRecoPolicyService.indexAfterCommit(created);
+        return toDetail(created);
     }
 
     @Transactional
@@ -93,7 +99,9 @@ public class AdminPolicyService {
         }
         String updatedJson = writeJson(existing);
         policyMapper.updatePolicyValue(policyId, updatedJson);
-        return toDetail(policyMapper.selectById(policyId));
+        RecoPolicy updated = policyMapper.selectById(policyId);
+        esRecoPolicyService.indexAfterCommit(updated);
+        return toDetail(updated);
     }
 
     @Transactional
@@ -104,7 +112,9 @@ public class AdminPolicyService {
         }
         logApproval(policyId, "APPROVE", null, approverId);
         policyMapper.approvePolicy(policyId, "APPROVED", approverId, LocalDateTime.now());
-        return toDetail(policyMapper.selectById(policyId));
+        RecoPolicy updated = policyMapper.selectById(policyId);
+        esRecoPolicyService.indexAfterCommit(updated);
+        return toDetail(updated);
     }
 
     @Transactional
@@ -120,7 +130,13 @@ public class AdminPolicyService {
         policyMapper.deactivateAll();
         policyMapper.activatePolicy(policyId);
         logDeploy(policyId, previous == null ? null : previous.getPolicyId(), "DEPLOY", reason, actorId);
-        return toDetail(policyMapper.selectById(policyId));
+        if (previous != null) {
+            RecoPolicy prevUpdated = policyMapper.selectById(previous.getPolicyId());
+            esRecoPolicyService.indexAfterCommit(prevUpdated);
+        }
+        RecoPolicy updated = policyMapper.selectById(policyId);
+        esRecoPolicyService.indexAfterCommit(updated);
+        return toDetail(updated);
     }
 
     @Transactional(readOnly = true)

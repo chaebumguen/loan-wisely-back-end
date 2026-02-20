@@ -60,8 +60,19 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	
 	implementation 'org.flywaydb:flyway-database-oracle'	
+
+	// Elasticsearch (7.10.1)
+	implementation 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.10.1'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+}
+
+tasks.withType(ProcessResources).configureEach {
+	duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }

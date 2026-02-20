@@ -65,6 +65,12 @@
          ORDER BY updated_at DESC, add_date DESC, product_id DESC
     </select>
 
+    <select id="selectAll" resultMap="LoanProductResultMap">
+        SELECT *
+          FROM LOAN_PRODUCT
+         ORDER BY updated_at DESC, add_date DESC, product_id DESC
+    </select>
+
     <!-- 등록: product_id는 시퀀스로 생성 (V2에서 LOAN_PRODUCT_SEQ 필요) -->
     <insert id="insert" parameterType="com.ccksy.loan.domain.product.entity.LoanProduct">
         INSERT INTO LOAN_PRODUCT (

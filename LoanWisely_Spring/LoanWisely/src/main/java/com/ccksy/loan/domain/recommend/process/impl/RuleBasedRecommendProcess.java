@@ -80,7 +80,7 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
         List<ExclusionReason> warnings = new ArrayList<>();
         if (!eligibilityPolicy.isEligible(filterContext)) {
             notReady = true;
-            warnings.add(ExclusionReason.of("ELIGIBILITY_FAILED", "異붿쿇 湲곕낯 議곌굔??異⑹”?섏? ?딆뒿?덈떎."));
+            warnings.add(ExclusionReason.of("ELIGIBILITY_FAILED", "추천 기본 조건을 충족하지 않습니다."));
         }
 
         // ?꾪꽣 泥댁씤 ?곸슜: creditScore/dsr ???쒖쇅 ?ъ쑀 ?섏쭛
@@ -106,7 +106,7 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
         if (candidates.isEmpty()) {
             var b = RecommendResultBuilder.notReady(command.getReproduceKey(), new NotReadyState().code())
                     .resolvedInputLevel(command.getRequestedInputLevel());
-            b = RecommendResultBuilder.addGlobalWarning(b, "NO_PRODUCT", "異붿쿇 媛?ν븳 ?곹뭹???놁뒿?덈떎.");
+            b = RecommendResultBuilder.addGlobalWarning(b, "NO_PRODUCT", "추천 가능한 상품이 없습니다.");
             for (ExclusionReason warn : warnings) {
                 b = RecommendResultBuilder.addGlobalWarning(b, warn.getCode(), warn.getMessage());
             }
@@ -179,13 +179,10 @@ public class RuleBasedRecommendProcess extends AbstractRecommendProcess {
             }
         }
 
-        List<Long> finalIds = new ArrayList<>();
-        for (int i = 0; i < matched.size() && i < MAX_RECOMMEND_ITEMS; i++) {
-            finalIds.add(matched.get(i));
-        }
-        for (int i = 0; i < mismatched.size() && i < MAX_EXCLUDED_ITEMS; i++) {
-            finalIds.add(mismatched.get(i));
-        }
+        // 모든 상품을 추천/제외 섹션으로 보여주기 위해 제한 없이 포함
+        List<Long> finalIds = new ArrayList<>(matched.size() + mismatched.size());
+        finalIds.addAll(matched);
+        finalIds.addAll(mismatched);
 
         for (Long productId : finalIds) {
             BigDecimal score = scores.getOrDefault(productId, BigDecimal.ZERO);

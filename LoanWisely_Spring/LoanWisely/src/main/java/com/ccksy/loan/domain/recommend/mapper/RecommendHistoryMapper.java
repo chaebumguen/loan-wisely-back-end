@@ -18,4 +18,6 @@ public interface RecommendHistoryMapper {
     RecommendHistory selectByReproduceKey(@Param("reproduceKey") String reproduceKey);
 
     List<RecommendHistory> selectHistoryByUserId(@Param("userId") Long userId);
+
+    List<RecommendHistory> selectAll();
 }

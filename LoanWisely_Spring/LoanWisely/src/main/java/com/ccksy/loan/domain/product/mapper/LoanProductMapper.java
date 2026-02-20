@@ -19,6 +19,8 @@ public interface LoanProductMapper {
                                 @Param("loanTypeCodeValueId") String loanTypeCodeValueId,
                                 @Param("repaymentTypeCodeValueId") String repaymentTypeCodeValueId);
 
+    List<LoanProduct> selectAll();
+
     int insert(LoanProduct product);
 
     int update(LoanProduct product);

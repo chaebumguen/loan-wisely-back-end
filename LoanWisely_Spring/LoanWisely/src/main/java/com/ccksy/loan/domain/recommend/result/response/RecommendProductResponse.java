@@ -17,5 +17,6 @@ public class RecommendProductResponse {
     private String reason;
     private Integer suitabilityScore;
     private String riskNote;
+    private String providerUrl;
     private List<RecommendEstimationDetailResponse> estimationDetails;
 }

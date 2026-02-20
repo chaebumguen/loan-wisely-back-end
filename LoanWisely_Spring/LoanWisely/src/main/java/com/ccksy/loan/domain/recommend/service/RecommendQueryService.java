@@ -1,9 +1,11 @@
-package com.ccksy.loan.domain.recommend.service;
+﻿package com.ccksy.loan.domain.recommend.service;
 
 import com.ccksy.loan.common.exception.BusinessException;
 import com.ccksy.loan.common.exception.ErrorCode;
 import com.ccksy.loan.domain.product.entity.LoanProduct;
+import com.ccksy.loan.domain.product.entity.ProviderUrl;
 import com.ccksy.loan.domain.product.mapper.LoanProductMapper;
+import com.ccksy.loan.domain.product.mapper.ProviderUrlMapper;
 import com.ccksy.loan.domain.recommend.entity.RecoEventLog;
 import com.ccksy.loan.domain.recommend.entity.RecoExclusionReason;
 import com.ccksy.loan.domain.recommend.entity.RecoItem;
@@ -29,6 +31,7 @@ import com.ccksy.loan.domain.product.service.ProductRateService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -44,6 +47,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RecommendQueryService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -52,6 +56,7 @@ public class RecommendQueryService {
     private final RecommendHistoryMapper recommendHistoryMapper;
     private final LoanProductMapper loanProductMapper;
     private final com.ccksy.loan.domain.product.mapper.ProviderMapper providerMapper;
+    private final ProviderUrlMapper providerUrlMapper;
     private final RecoItemMapper recoItemMapper;
     private final RecoEstimationDetailMapper recoEstimationDetailMapper;
     private final RecoExclusionReasonMapper recoExclusionReasonMapper;
@@ -221,6 +226,26 @@ public class RecommendQueryService {
     }
 
     private RecommendExplainSummaryResponse buildExplainSummary(RecommendHistory history, Map<String, Object> payload) {
+        String summary = history.getExplainSummary();
+        Integer inputLevel = null;
+        if (payload != null) {
+            Object summaryValue = payload.get("summary");
+            if (summaryValue instanceof String s && !s.isBlank()) {
+                summary = s;
+            }
+            Object levelValue = payload.get("resolvedInputLevel");
+            inputLevel = asInteger(levelValue);
+        }
+        if (summary == null || summary.isBlank() || summary.startsWith("state=") || !summary.contains("금리")) {
+            String computed = buildSummaryFromPayload(payload);
+            if (computed != null && !computed.isBlank()) {
+                summary = computed;
+            }
+        }
+
+        String levelUsed = toLevelUsed(inputLevel);
+        String levelStatus = toLevelStatus(inputLevel);
+
         return RecommendExplainSummaryResponse.builder()
                 .summary("")
                 .levelUsed("")
@@ -228,47 +253,152 @@ public class RecommendQueryService {
                 .build();
     }
 
+    private String buildSummaryFromPayload(Map<String, Object> payload) {
+        if (payload == null || payload.get("items") == null) {
+            return "";
+        }
+        List<Map<String, Object>> items = objectMapper.convertValue(
+                payload.get("items"),
+                new TypeReference<List<Map<String, Object>>>() {}
+        );
+        if (items == null || items.isEmpty()) {
+            return "추천 결과가 없습니다.";
+        }
+
+        int itemCount = items.size();
+        int warningCount = 0;
+        Object warningsObj = payload.get("warnings");
+        if (warningsObj instanceof Map<?, ?> warningsMap) {
+            warningCount = warningsMap.size();
+        }
+
+        java.math.BigDecimal minRate = null;
+        java.math.BigDecimal maxRate = null;
+        java.math.BigDecimal scoreSum = java.math.BigDecimal.ZERO;
+        int scoreCount = 0;
+
+        for (Map<String, Object> item : items) {
+            Long productId = asLong(item.get("productId"));
+            java.math.BigDecimal candidateMin = asBigDecimal(item.get("minRate"));
+            java.math.BigDecimal candidateMax = candidateMin;
+            if (productId != null) {
+                ProductRateQuote quote = productRateService.getRateQuote(productId);
+                if (quote != null) {
+                    if (quote.getRateMin() != null) {
+                        candidateMin = quote.getRateMin();
+                    }
+                    if (quote.getRateMax() != null) {
+                        candidateMax = quote.getRateMax();
+                    }
+                }
+            }
+            if (candidateMin != null) {
+                minRate = minRate == null ? candidateMin : minRate.min(candidateMin);
+            }
+            if (candidateMax != null) {
+                maxRate = maxRate == null ? candidateMax : maxRate.max(candidateMax);
+            }
+
+            java.math.BigDecimal score = asBigDecimal(item.get("score"));
+            if (score != null) {
+                scoreSum = scoreSum.add(score);
+                scoreCount++;
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        String policyVersion = payload.get("policyVersion") instanceof String s ? s : "";
+        if (!policyVersion.isBlank()) {
+            sb.append("정책 ").append(policyVersion).append(" 기준으로 ");
+        }
+        sb.append(itemCount).append("개 상품을 추천했습니다.");
+
+        if (minRate != null && maxRate != null) {
+            sb.append(" 금리 범위는 ")
+              .append(formatDecimal(minRate)).append("%~")
+              .append(formatDecimal(maxRate)).append("%입니다.");
+        }
+
+        if (scoreCount > 0) {
+            java.math.BigDecimal avgScore =
+                    scoreSum.divide(java.math.BigDecimal.valueOf(scoreCount), 4, java.math.RoundingMode.HALF_UP);
+            sb.append(" 평균 점수는 ").append(formatDecimal(avgScore)).append("입니다.");
+        }
+
+        if (warningCount > 0) {
+            sb.append(" 경고 ").append(warningCount).append("건이 있습니다.");
+        }
+        return sb.toString().trim();
+    }
+
     private List<RecommendProductResponse> buildProducts(RecommendHistory history, Map<String, Object> payload, Long userId) {
         List<RecoItem> recoItems = fetchRecoItems(history);
+        Map<Long, List<RecoExclusionReason>> reasonMap = buildReasonMap(fetchExclusionReasons(history));
+
         if (recoItems.isEmpty()) {
             return buildProductsFromPayload(payload, userId);
         }
 
-        Map<Long, List<RecoExclusionReason>> reasonMap = buildReasonMap(fetchExclusionReasons(history));
-        List<RecommendProductResponse> products = new ArrayList<>();
-        for (RecoItem item : recoItems) {
-            Long productId = item.getProductId();
-            String productName = "대출 상품";
-            String lenderName = "금융사";
+        List<LoanProduct> allProducts = loanProductMapper.selectAll();
+        if (allProducts == null || allProducts.isEmpty()) {
+            return buildProductsFromPayload(payload, userId);
+        }
 
-            if (productId != null) {
-                LoanProduct product = loanProductMapper.selectById(productId);
-                if (product != null) {
-                    productName = product.getProductName() == null ? productName : product.getProductName();
-                    if (product.getCompanyName() != null && !product.getCompanyName().isBlank()) {
-                        lenderName = product.getCompanyName();
-                    } else if (product.getFinCoNo() != null && !product.getFinCoNo().isBlank()) {
-                        var provider = providerMapper.selectByFinCoNo(product.getFinCoNo());
-                        if (provider != null && provider.getCompanyName() != null && !provider.getCompanyName().isBlank()) {
-                            lenderName = provider.getCompanyName();
-                        }
-                    }
-                } else {
-                    productName = "대출 상품";
-                    lenderName = "금융사";
+        Map<Long, RecoItem> itemMap = new HashMap<>();
+        for (RecoItem item : recoItems) {
+            if (item == null || item.getProductId() == null) {
+                continue;
+            }
+            itemMap.putIfAbsent(item.getProductId(), item);
+        }
+
+        List<RecommendProductResponse> products = new ArrayList<>();
+        for (LoanProduct product : allProducts) {
+            if (product == null || product.getProductId() == null) {
+                continue;
+            }
+            Long productId = product.getProductId();
+            RecoItem item = itemMap.get(productId);
+
+            String productName = product.getProductName() == null ? "대출 상품" : product.getProductName();
+            String lenderName = "금융사";
+            String providerUrl = null;
+
+            if (product.getCompanyName() != null && !product.getCompanyName().isBlank()) {
+                lenderName = product.getCompanyName();
+            } else if (product.getFinCoNo() != null && !product.getFinCoNo().isBlank()) {
+                var provider = providerMapper.selectByFinCoNo(product.getFinCoNo());
+                if (provider != null && provider.getCompanyName() != null && !provider.getCompanyName().isBlank()) {
+                    lenderName = provider.getCompanyName();
+                }
+            }
+
+            if (product.getFinCoNo() != null && !product.getFinCoNo().isBlank()) {
+                String finCoNo = product.getFinCoNo().trim();
+                ProviderUrl url = providerUrlMapper.selectByFinCoNo(finCoNo);
+                if (url != null && url.getHomepageUrl() != null && !url.getHomepageUrl().isBlank()) {
+                    providerUrl = url.getHomepageUrl();
+                }
+                if (log.isDebugEnabled()) {
+                    log.debug("providerUrl lookup finCoNo={} url={}", finCoNo, providerUrl);
                 }
             }
 
             ProductRateQuote quote = productRateService.getRateQuote(productId);
             String rate = formatRate(resolveRateMin(item, quote), resolveRateMax(quote));
             String reason = buildReasonText(reasonMap.get(productId), item, payload);
-            Integer score = toScorePercent(item.getMatchingScore());
+            if ((reason == null || reason.isBlank()) && item == null) {
+                reason = "추천 대상이 아닙니다.";
+            }
+            Integer score = item == null ? null : toScorePercent(item.getMatchingScore());
             String limit = formatLimit(resolveLimit(item, quote, userId));
-            String riskNote = item.getStabilityScore() == null ? "" : "안정성 점수 " + item.getStabilityScore();
-            List<RecommendEstimationDetailResponse> estimationDetails = buildEstimationDetails(item);
+            String riskNote = item == null || item.getStabilityScore() == null ? "" : "안정성 점수 " + item.getStabilityScore();
+            List<RecommendEstimationDetailResponse> estimationDetails = item == null
+                    ? Collections.emptyList()
+                    : buildEstimationDetails(item);
 
             products.add(RecommendProductResponse.builder()
-                    .id(productId == null ? "" : String.valueOf(productId))
+                    .id(String.valueOf(productId))
                     .lenderName(lenderName)
                     .productName(productName)
                     .rate(rate)
@@ -276,6 +406,7 @@ public class RecommendQueryService {
                     .reason(reason)
                     .suitabilityScore(score)
                     .riskNote(riskNote)
+                    .providerUrl(providerUrl)
                     .estimationDetails(estimationDetails)
                     .build());
         }
@@ -413,6 +544,11 @@ public class RecommendQueryService {
             return "한도 정보 없음";
         }
         return limit.toString();
+    }
+
+    private String formatDecimal(java.math.BigDecimal value) {
+        if (value == null) return "";
+        return value.stripTrailingZeros().toPlainString();
     }
 
     private String resolveRepaymentMethod(LoanProduct product) {
@@ -587,6 +723,7 @@ public class RecommendQueryService {
             Long productId = asLong(item.get("productId"));
             String productName = "대출 상품";
             String lenderName = "Provider";
+            String providerUrl = null;
 
             if (productId != null) {
                 LoanProduct product = loanProductMapper.selectById(productId);
@@ -595,6 +732,16 @@ public class RecommendQueryService {
                     lenderName = product.getProviderId() == null
                             ? lenderName
                             : "Provider " + product.getProviderId();
+                    if (product.getFinCoNo() != null && !product.getFinCoNo().isBlank()) {
+                        String finCoNo = product.getFinCoNo().trim();
+                        ProviderUrl url = providerUrlMapper.selectByFinCoNo(finCoNo);
+                        if (url != null && url.getHomepageUrl() != null && !url.getHomepageUrl().isBlank()) {
+                            providerUrl = url.getHomepageUrl();
+                        }
+                        if (log.isDebugEnabled()) {
+                            log.debug("providerUrl lookup (payload) finCoNo={} url={}", finCoNo, providerUrl);
+                        }
+                    }
                 } else {
                     productName = "Product " + productId;
                     lenderName = "Provider";
@@ -615,6 +762,7 @@ public class RecommendQueryService {
                     .reason(reason)
                     .suitabilityScore(score)
                     .riskNote("")
+                    .providerUrl(providerUrl)
                     .estimationDetails(Collections.emptyList())
                     .build());
         }
@@ -622,6 +770,9 @@ public class RecommendQueryService {
         return products;
     }
 }
+
+
+
 
 
 

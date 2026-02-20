@@ -6,14 +6,18 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
   application:
     name: LoanWisely
 
   datasource:
     driver-class-name: oracle.jdbc.OracleDriver
     url: jdbc:oracle:thin:@localhost:1521/XE
-    username: C##PROTOV4
-    password: PROTOV4
+    username: C##PROTOV5
+    password: CCKSY
 
   flyway:
     enabled: true
@@ -23,8 +27,8 @@ spring:
     clean-on-validation-error: false
     validate-on-migrate: true
     table: FLYWAY_SCHEMA_HISTORY
-    default-schema: C##PROTOV4
-    schemas: C##PROTOV4
+    default-schema: C##PROTOV5
+    schemas: C##PROTOV5
 
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml
@@ -75,6 +79,3 @@ product:
       top-fin-grp-nos-rent: "020000,030200,050000,060000"
       page-no: "1"
       finance-cd: ""
-
-
-

@@ -79,4 +79,10 @@
          ORDER BY created_at DESC, recommend_id DESC
     </select>
 
+    <select id="selectAll" resultMap="RecommendHistoryResultMap">
+        SELECT *
+          FROM RECOMMEND_HISTORY
+         ORDER BY created_at DESC, recommend_id DESC
+    </select>
+
 </mapper>
