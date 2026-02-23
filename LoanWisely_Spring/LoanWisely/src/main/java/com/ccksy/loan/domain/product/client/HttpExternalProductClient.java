@@ -411,18 +411,18 @@ public class HttpExternalProductClient implements ExternalProductClient {
         RateStats base = byType.get("B");
         RateStats add = byType.get("C");
         RateStats adj = byType.get("D");
-        if (base == null || add == null) {
+        if (base == null || add == null || adj == null) {
             return null;
         }
         BigDecimal min = null;
         BigDecimal max = null;
-        if (base.min != null && add.min != null) {
-            BigDecimal dMax = adj == null ? BigDecimal.ZERO : (adj.max == null ? BigDecimal.ZERO : adj.max);
-            min = base.min.add(add.min).subtract(dMax);
+        if (base.min != null && add.min != null && adj.max != null) {
+            min = base.min.add(add.min).subtract(adj.max);
+            min = nonNegativeOrNull(min);
         }
-        if (base.max != null && add.max != null) {
-            BigDecimal dMin = adj == null ? BigDecimal.ZERO : (adj.min == null ? BigDecimal.ZERO : adj.min);
-            max = base.max.add(add.max).subtract(dMin);
+        if (base.max != null && add.max != null && adj.min != null) {
+            max = base.max.add(add.max).subtract(adj.min);
+            max = nonNegativeOrNull(max);
         }
         if (min == null && max == null) {
             return null;
@@ -467,28 +467,35 @@ public class HttpExternalProductClient implements ExternalProductClient {
         RateStats base = byType.get("B");
         RateStats add = byType.get("C");
         RateStats adj = byType.get("D");
-        if (base == null || add == null) {
+        if (base == null || add == null || adj == null) {
             return null;
         }
         BigDecimal min = null;
         BigDecimal max = null;
         BigDecimal baseRate = null;
-        if (base.min != null && add.min != null) {
-            BigDecimal dMax = adj == null ? BigDecimal.ZERO : (adj.max == null ? BigDecimal.ZERO : adj.max);
-            min = base.min.add(add.min).subtract(dMax);
+        if (base.min != null && add.min != null && adj.max != null) {
+            min = base.min.add(add.min).subtract(adj.max);
+            min = nonNegativeOrNull(min);
         }
-        if (base.max != null && add.max != null) {
-            BigDecimal dMin = adj == null ? BigDecimal.ZERO : (adj.min == null ? BigDecimal.ZERO : adj.min);
-            max = base.max.add(add.max).subtract(dMin);
+        if (base.max != null && add.max != null && adj.min != null) {
+            max = base.max.add(add.max).subtract(adj.min);
+            max = nonNegativeOrNull(max);
         }
-        if (base.base != null && add.base != null) {
-            BigDecimal dBase = adj == null ? BigDecimal.ZERO : (adj.base == null ? BigDecimal.ZERO : adj.base);
-            baseRate = base.base.add(add.base).subtract(dBase);
+        if (base.base != null && add.base != null && adj.base != null) {
+            baseRate = base.base.add(add.base).subtract(adj.base);
+            baseRate = nonNegativeOrNull(baseRate);
         }
         if (min == null && max == null && baseRate == null) {
             return null;
         }
         return new RateStats(min, max, baseRate, "대출금리");
+    }
+
+    private BigDecimal nonNegativeOrNull(BigDecimal value) {
+        if (value == null) {
+            return null;
+        }
+        return value.compareTo(BigDecimal.ZERO) < 0 ? null : value;
     }
 
     private BigDecimal pickDecimal(com.fasterxml.jackson.databind.JsonNode node, String... keys) {
