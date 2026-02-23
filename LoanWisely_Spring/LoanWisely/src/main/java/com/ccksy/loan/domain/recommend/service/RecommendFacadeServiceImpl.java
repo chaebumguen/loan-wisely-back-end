@@ -2,6 +2,7 @@ package com.ccksy.loan.domain.recommend.service;
 
 import com.ccksy.loan.common.exception.BusinessException;
 import com.ccksy.loan.common.exception.ErrorCode;
+import com.ccksy.loan.domain.consent.mapper.UserConsentMapper;
 import com.ccksy.loan.domain.recommend.command.RecommendCommand;
 import com.ccksy.loan.domain.recommend.command.RecommendCommandHandler;
 import com.ccksy.loan.domain.recommend.dto.request.RecommendRequest;
@@ -54,6 +55,7 @@ public class RecommendFacadeServiceImpl implements RecommendFacadeService {
     private final RecoEventLogMapper recoEventLogMapper;
     private final ProductRateService productRateService;
     private final UserCreditLv1Mapper userCreditLv1Mapper;
+    private final UserConsentMapper userConsentMapper;
     private final EsRecommendHistoryService esRecommendHistoryService;
 
     @Override
@@ -65,6 +67,7 @@ public class RecommendFacadeServiceImpl implements RecommendFacadeService {
         if (lv1 == null) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED, "LV1 data is required");
         }
+        assertUserConsentGranted(request.getUserId());
         if (request.getRequestedInputLevel() == null) {
             request.setRequestedInputLevel(1);
         }
@@ -320,6 +323,14 @@ public class RecommendFacadeServiceImpl implements RecommendFacadeService {
         }
 
         return sb.toString().trim();
+    }
+
+    private void assertUserConsentGranted(Long userId) {
+        boolean granted = userConsentMapper.selectActiveByUserId(userId).stream()
+                .anyMatch(consent -> consent != null && "Y".equalsIgnoreCase(consent.getConsentGiven()));
+        if (!granted) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "금융정보 이용 동의가 필요합니다.");
+        }
     }
 
     private String safe(Object value) {

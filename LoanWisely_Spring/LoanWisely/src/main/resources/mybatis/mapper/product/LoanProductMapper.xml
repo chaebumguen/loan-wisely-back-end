@@ -73,6 +73,9 @@
 
     <!-- 등록: product_id는 시퀀스로 생성 (V2에서 LOAN_PRODUCT_SEQ 필요) -->
     <insert id="insert" parameterType="com.ccksy.loan.domain.product.entity.LoanProduct">
+        <selectKey keyProperty="productId" resultType="long" order="BEFORE">
+            SELECT LOAN_PRODUCT_SEQ.NEXTVAL FROM dual
+        </selectKey>
         INSERT INTO LOAN_PRODUCT (
             product_id,
             provider_id,
@@ -92,7 +95,7 @@
             end_date,
             updated_at
         ) VALUES (
-            LOAN_PRODUCT_SEQ.NEXTVAL,
+            #{productId},
             #{providerId},
             #{productName},
             #{productTypeCodeValueId},

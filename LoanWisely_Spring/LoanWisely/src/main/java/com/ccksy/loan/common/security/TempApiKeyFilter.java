@@ -33,6 +33,7 @@ public class TempApiKeyFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         if (HttpMethod.OPTIONS.matches(request.getMethod())) return true;
         if (path.startsWith("/health")) return true;
+        if (path.startsWith("/actuator/health")) return true;
         // API Key는 내부 호출에만 적용
         return !(path.startsWith("/api/internal/") || path.startsWith("/internal/"));
     }

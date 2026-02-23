@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 @Service
 public class RawFileService {
     private static final Logger log = LoggerFactory.getLogger(RawFileService.class);
+    private static final long MAX_UPLOAD_SIZE_BYTES = 10L * 1024L * 1024L;
 
     private static final DateTimeFormatter LIST_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -120,6 +121,7 @@ public class RawFileService {
         try {
             Files.createDirectories(storageDir);
             String originalName = file.getOriginalFilename() == null ? "upload.bin" : file.getOriginalFilename();
+            validateUploadRequest(file, originalName);
             String storedName = UUID.randomUUID() + "-" + originalName;
             Path storedPath = storageDir.resolve(storedName);
 
@@ -150,15 +152,24 @@ public class RawFileService {
         if (upload == null) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Upload not found");
         }
-        if (!"INGESTED".equals(upload.getStatus()) && !"NORMALIZED".equals(upload.getStatus()) && !"EDA_DONE".equals(upload.getStatus())) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Ingest required before normalize");
+        String status = upload.getStatus();
+        if (!"UPLOADED".equals(status)
+                && !"VALIDATED".equals(status)
+                && !"INGESTED".equals(status)
+                && !"NORMALIZED".equals(status)
+                && !"EDA_DONE".equals(status)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Upload required before validate");
         }
         List<String> errors = validateFile(upload);
         if (errors.isEmpty()) {
-            rawFileUploadMapper.updateStatus(uploadId, "VALIDATED");
+            if ("UPLOADED".equals(status) || "VALIDATED".equals(status)) {
+                rawFileUploadMapper.updateStatus(uploadId, "VALIDATED");
+            }
             return new RawFileValidateResponse(true, List.of());
         }
-        rawFileUploadMapper.updateStatus(uploadId, "FAILED");
+        if ("UPLOADED".equals(status) || "VALIDATED".equals(status)) {
+            rawFileUploadMapper.updateStatus(uploadId, "FAILED");
+        }
         return new RawFileValidateResponse(false, errors);
     }
 
@@ -313,6 +324,16 @@ private String sha256(Path filePath) throws IOException {
             return HexFormat.of().formatHex(hash);
         } catch (Exception ex) {
             throw new IOException(ex);
+        }
+    }
+
+    private void validateUploadRequest(MultipartFile file, String originalName) {
+        String lowerName = originalName == null ? "" : originalName.toLowerCase();
+        if (!lowerName.endsWith(".csv")) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Only CSV files are allowed");
+        }
+        if (file.getSize() > MAX_UPLOAD_SIZE_BYTES) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "File too large");
         }
     }
 

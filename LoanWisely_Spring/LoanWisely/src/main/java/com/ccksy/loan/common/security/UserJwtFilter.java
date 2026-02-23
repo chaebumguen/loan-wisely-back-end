@@ -27,9 +27,10 @@ public class UserJwtFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         if (path.startsWith("/api/admin/")) return true;
-        if (path.startsWith("/api/auth/")) return true;
-        if (path.startsWith("/api/dev/external-products/")) return true;
+        if ("/api/auth/login".equals(path) || "/api/auth/register".equals(path) || "/api/auth/verify".equals(path)) return true;
+        if ("/api/dev/external-products".equals(path) || path.startsWith("/api/dev/external-products/")) return true;
         if (path.startsWith("/health")) return true;
+        if (path.startsWith("/actuator/health")) return true;
         if (path.startsWith("/internal/")) return true;
         if (path.startsWith("/api/internal/")) return true;
         return false;
