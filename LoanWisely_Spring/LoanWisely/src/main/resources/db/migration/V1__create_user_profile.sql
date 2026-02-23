@@ -1,4 +1,4 @@
-﻿-- USER_PROFILE: 사용자 입력/이력 (이력 불변 + 활성 플래그)
+-- USER_PROFILE: 사용자 입력/이력 (이력 불변 + 활성 플래그)
 -- 정책:
 -- - 같은 user_id에 대해 최신 유효 1건만 is_active='Y'
 -- - 신규 입력 시 기존 is_active='Y'를 'N'으로 바꾸고 신규 row insert

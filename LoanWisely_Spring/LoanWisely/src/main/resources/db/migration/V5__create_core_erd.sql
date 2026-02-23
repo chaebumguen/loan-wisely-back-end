@@ -1,4 +1,4 @@
-﻿-- 설계서 기준 ERD 핵심 테이블 (정식 마이그레이션)
+-- 설계서 기준 ERD 핵심 테이블 (정식 마이그레이션)
 -- 출처: `5. ERD.pdf`
 -- 주의: 컬럼/자료형/제약은 ERD 상세 기준으로 추가 보정 필요
 -- 대상 DB: Oracle (NUMBER, VARCHAR2, TIMESTAMP, DATE)

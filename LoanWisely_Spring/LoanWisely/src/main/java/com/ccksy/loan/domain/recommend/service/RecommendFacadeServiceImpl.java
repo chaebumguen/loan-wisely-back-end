@@ -64,7 +64,11 @@ public class RecommendFacadeServiceImpl implements RecommendFacadeService {
         request.assertRequiredFields();
 
         UserCreditLv1 lv1 = userCreditLv1Mapper.selectLatestActiveByUserId(request.getUserId());
-        if (lv1 == null) {
+        if (lv1 == null
+                || lv1.getAge() == null
+                || lv1.getIncomeYear() == null
+                || lv1.getGender() == null
+                || lv1.getGender().isBlank()) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED, "LV1 data is required");
         }
         assertUserConsentGranted(request.getUserId());

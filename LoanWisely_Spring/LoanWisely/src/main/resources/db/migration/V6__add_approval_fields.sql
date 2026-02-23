@@ -1,4 +1,4 @@
-﻿-- 승인/활성 버전 컬럼 추가 (CODE_DICTIONARY_VERSION, RECO_POLICY)
+-- 승인/활성 버전 컬럼 추가 (CODE_DICTIONARY_VERSION, RECO_POLICY)
 -- 설계서 기준 승인/활성 분리 적용
 
 ALTER TABLE CODE_DICTIONARY_VERSION ADD (
