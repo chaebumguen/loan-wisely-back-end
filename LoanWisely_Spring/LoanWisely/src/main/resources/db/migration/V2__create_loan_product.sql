@@ -1,4 +1,4 @@
--- LOAN_PRODUCT: 대출상품(기본정보)
+﻿-- LOAN_PRODUCT: 대출상품(기본정보)
 -- 정책:
 -- - product_id는 시퀀스로 생성
 -- - CODE_VALUE 기반 코드 컬럼은 code_value_id 문자열로 보관(v1)

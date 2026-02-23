@@ -1,7 +1,6 @@
 package com.ccksy.loan.domain.user.dto.request;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,6 +18,6 @@ public class UserCreditLv1Request {
     @NotNull
     private Long incomeYear;
 
-    @NotBlank
+    @NotNull
     private String gender;
 }

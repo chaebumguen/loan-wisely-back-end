@@ -1,4 +1,4 @@
--- RECOMMEND_HISTORY: 추천 이력(재현/감사/증거 경로 포함)
+﻿-- RECOMMEND_HISTORY: 추천 이력(재현/감사/증거 경로 포함)
 -- 정책:
 -- - DB에는 JSON 자체 저장하지 않음 (경로만 저장)
 -- - reproduce_key는 재현 키이므로 UNIQUE

@@ -12,7 +12,6 @@ import com.ccksy.loan.domain.user.auth.dto.UserVerifyResponse;
 import com.ccksy.loan.domain.user.auth.entity.UserAuth;
 import com.ccksy.loan.domain.user.auth.mapper.UserAuthMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,18 +20,15 @@ public class UserAuthServiceImpl implements UserAuthService {
 
     private final UserAuthMapper userAuthMapper;
     private final UserJwtService userJwtService;
-    private final PasswordEncoder passwordEncoder;
     private final long ttlSeconds;
     private final int maxFailAttempts;
 
     public UserAuthServiceImpl(UserAuthMapper userAuthMapper,
                                UserJwtService userJwtService,
-                               PasswordEncoder passwordEncoder,
                                @Value("${security.user-jwt-ttl-secs}") long ttlSeconds,
                                @Value("${security.user-login-max-failures:5}") int maxFailAttempts) {
         this.userAuthMapper = userAuthMapper;
         this.userJwtService = userJwtService;
-        this.passwordEncoder = passwordEncoder;
         this.ttlSeconds = ttlSeconds;
         this.maxFailAttempts = maxFailAttempts;
     }
@@ -41,9 +37,8 @@ public class UserAuthServiceImpl implements UserAuthService {
     @Transactional(noRollbackFor = BusinessException.class)
     public UserLoginResponse login(UserLoginRequest request) {
         request.assertRequiredFields();
-        String username = request.getUsername().trim();
 
-        UserAuth auth = userAuthMapper.selectByUsername(username);
+        UserAuth auth = userAuthMapper.selectByUsername(request.getUsername());
         if (auth == null || !"ACTIVE".equalsIgnoreCase(auth.getStatus())) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid credentials");
         }
@@ -78,8 +73,8 @@ public class UserAuthServiceImpl implements UserAuthService {
         Long nextId = userAuthMapper.selectNextId();
         UserAuth auth = UserAuth.builder()
                 .userId(nextId)
-                .username(request.getUsername().trim())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .username(request.getUsername())
+                .passwordHash("plain:" + request.getPassword())
                 .status("ACTIVE")
                 .failLoginCount(0)
                 .isLocked("N")
@@ -103,6 +98,6 @@ public class UserAuthServiceImpl implements UserAuthService {
         if (storedHash.startsWith("plain:")) {
             return storedHash.equals("plain:" + rawPassword);
         }
-        return passwordEncoder.matches(rawPassword, storedHash);
+        return storedHash.equals(rawPassword);
     }
 }
