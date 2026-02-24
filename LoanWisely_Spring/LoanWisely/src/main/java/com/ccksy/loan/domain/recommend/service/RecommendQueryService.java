@@ -112,9 +112,9 @@ public class RecommendQueryService {
         RecommendExplainSummaryResponse explain = buildExplainSummary(history, payload);
         List<RecommendProductResponse> products = buildProducts(history, payload, history.getUserId());
         RecommendDetailInfoResponse detail = RecommendDetailInfoResponse.builder()
-                .description("상품 상세 정보가 표시됩니다.")
-                .monthlyPaymentExample("월 상환액 예시가 표시됩니다.")
-                .riskWarning("고위험 조건 경고 및 승인 보장 아님 고지가 표시됩니다.")
+                .description("상세 정보가 아직 제공되지 않았습니다.")
+                .monthlyPaymentExample("상환 시뮬레이션 정보가 아직 제공되지 않았습니다.")
+                .riskWarning("리스크 안내 정보가 아직 제공되지 않았습니다.")
                 .build();
 
         return RecommendDetailResponse.builder()
@@ -135,9 +135,9 @@ public class RecommendQueryService {
         RecommendExplainSummaryResponse explain = buildExplainSummary(history, payload);
         List<RecommendProductResponse> products = buildProducts(history, payload, history.getUserId());
         RecommendDetailInfoResponse detail = RecommendDetailInfoResponse.builder()
-                .description(explain.getSummary() == null ? "상품 상세 정보가 표시됩니다." : explain.getSummary())
-                .monthlyPaymentExample("월 상환액 예시가 표시됩니다.")
-                .riskWarning("고위험 조건 경고 및 승인 보장 아님 고지가 표시됩니다.")
+                .description(explain.getSummary() == null ? "상세 정보가 아직 제공되지 않았습니다." : explain.getSummary())
+                .monthlyPaymentExample("상환 시뮬레이션 정보가 아직 제공되지 않았습니다.")
+                .riskWarning("리스크 안내 정보가 아직 제공되지 않았습니다.")
                 .build();
 
         return RecommendDetailResponse.builder()
