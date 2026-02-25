@@ -31,7 +31,10 @@ public class AdminJwtFilter extends OncePerRequestFilter {
         if (!path.startsWith("/api/admin/")) {
             return true;
         }
-        return path.startsWith("/api/admin/auth/login");
+        if (path.startsWith("/api/admin/auth/login")) {
+            return true;
+        }
+        return false;
     }
 
     @Override
