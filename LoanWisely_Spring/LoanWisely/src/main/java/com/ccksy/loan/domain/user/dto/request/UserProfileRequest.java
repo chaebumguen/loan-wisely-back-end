@@ -1,71 +1,58 @@
 package com.ccksy.loan.domain.user.dto.request;
 
-import jakarta.validation.constraints.Min;
+import com.ccksy.loan.common.exception.BusinessException;
+import com.ccksy.loan.common.exception.ErrorCode;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+/**
+ * Unified DTO for saving user input (LV1~LV3).
+ * Null is allowed for fields not provided yet.
+ */
+@Getter
+@Setter
+@NoArgsConstructor
 public class UserProfileRequest {
 
+    private Long userId;
+
     /**
-     * LV1 필수 입력
+     * Input level (1~3).
      */
     @NotNull
-    @Min(0)
-    private Integer age;
+    private Integer inputLevel;
 
-    @NotNull
+    // LV1 (required)
+    @PositiveOrZero
+    private Integer age;
     @PositiveOrZero
     private Long incomeYear;
-
-    @NotNull
     private String gender;
 
-    /**
-     * LV2 선택 입력
-     */
+    // LV2 (optional)
     private String employmentType;
     private String residenceType;
 
-    /**
-     * LV3 선택 입력
-     */
-    private String loanPurpose;
-    private Long totalDebt;
+    // LV3 (optional)
+    @PositiveOrZero
+    private Long debtTotal;
+    @PositiveOrZero
     private Integer existingLoanCount;
+    private String loanPurpose;
 
-    protected UserProfileRequest() {
-        // Jackson 역직렬화 전용
-    }
+    public void assertRequiredFields() {
+        if (inputLevel == null || inputLevel < 1 || inputLevel > 3) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "inputLevel must be between 1 and 3");
+        }
 
-    public Integer getAge() {
-        return age;
-    }
-
-    public Long getIncomeYear() {
-        return incomeYear;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-
-    public String getEmploymentType() {
-        return employmentType;
-    }
-
-    public String getResidenceType() {
-        return residenceType;
-    }
-
-    public String getLoanPurpose() {
-        return loanPurpose;
-    }
-
-    public Long getTotalDebt() {
-        return totalDebt;
-    }
-
-    public Integer getExistingLoanCount() {
-        return existingLoanCount;
+        if (age == null || incomeYear == null || gender == null) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_FAILED,
+                    "LV1 required fields (age, incomeYear, gender) are missing"
+            );
+        }
     }
 }

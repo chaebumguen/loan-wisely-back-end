@@ -6,47 +6,48 @@ import org.apache.ibatis.type.JdbcType;
 import java.sql.*;
 
 /**
- * 공통 Enum TypeHandler
+ * Enum <-> VARCHAR 공통 핸들러
  *
- * - Enum.name() 기준으로 DB 저장
- * - 모든 도메인 Enum에 공통 적용 가능
+ * 주의:
+ * - 이 핸들러는 생성자에 Enum 클래스 타입이 필요하므로,
+ *   "그대로 자동 등록"만 해두면 실사용이 애매해질 수 있습니다.
+ * - v1에서는 필요 Enum부터 "Enum별 register" 방식으로 쓰는 것을 권장합니다.
  */
 public class EnumTypeHandler<E extends Enum<E>> extends BaseTypeHandler<E> {
 
     private final Class<E> type;
 
     public EnumTypeHandler(Class<E> type) {
-        if (type == null) {
-            throw new IllegalArgumentException("Enum type must not be null");
-        }
+        if (type == null) throw new IllegalArgumentException("Enum type must not be null");
         this.type = type;
     }
 
     @Override
-    public void setNonNullParameter(
-            PreparedStatement ps,
-            int i,
-            E parameter,
-            JdbcType jdbcType
-    ) throws SQLException {
+    public void setNonNullParameter(PreparedStatement ps, int i, E parameter, JdbcType jdbcType) throws SQLException {
         ps.setString(i, parameter.name());
     }
 
     @Override
     public E getNullableResult(ResultSet rs, String columnName) throws SQLException {
-        String value = rs.getString(columnName);
-        return value == null ? null : Enum.valueOf(type, value);
+        return toEnum(rs.getString(columnName));
     }
 
     @Override
     public E getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
-        String value = rs.getString(columnIndex);
-        return value == null ? null : Enum.valueOf(type, value);
+        return toEnum(rs.getString(columnIndex));
     }
 
     @Override
     public E getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
-        String value = cs.getString(columnIndex);
-        return value == null ? null : Enum.valueOf(type, value);
+        return toEnum(cs.getString(columnIndex));
+    }
+
+    private E toEnum(String value) throws SQLException {
+        if (value == null) return null;
+        try {
+            return Enum.valueOf(type, value);
+        } catch (IllegalArgumentException ex) {
+            throw new SQLException("Unknown enum value '" + value + "' for enum type " + type.getName(), ex);
+        }
     }
 }

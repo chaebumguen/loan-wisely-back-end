@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.product.mapper.ProviderMapper">
+
+    <resultMap id="ProviderResultMap" type="com.ccksy.loan.domain.product.entity.Provider">
+        <id     property="providerId"  column="provider_id"/>
+        <result property="finCoNo"      column="fin_co_no"/>
+        <result property="companyName"  column="company_name"/>
+        <result property="createdAt"    column="created_at"/>
+        <result property="updatedAt"    column="updated_at"/>
+    </resultMap>
+
+    <select id="selectByFinCoNo" parameterType="string" resultMap="ProviderResultMap">
+        SELECT *
+          FROM PROVIDER
+         WHERE fin_co_no = #{finCoNo}
+    </select>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.product.entity.Provider">
+        INSERT INTO PROVIDER (
+            provider_id,
+            fin_co_no,
+            company_name,
+            created_at,
+            updated_at
+        ) VALUES (
+            PROVIDER_SEQ.NEXTVAL,
+            #{finCoNo},
+            #{companyName},
+            #{createdAt},
+            #{updatedAt}
+        )
+    </insert>
+
+    <update id="updateName">
+        UPDATE PROVIDER
+           SET company_name = #{companyName},
+               updated_at = SYSTIMESTAMP
+         WHERE provider_id = #{providerId}
+    </update>
+
+</mapper>

@@ -1,17 +1,17 @@
 package com.ccksy.loan.domain.recommend.state;
 
-import com.ccksy.loan.domain.recommend.dto.request.RecommendRequest;
-
+/**
+ * 추천 상태(State)
+ * - v1: READY / NOT_READY / BLOCKED
+ */
 public interface RecommendState {
 
-    /**
-     * 현재 상태에서 추천 실행 가능 여부 판단.
-     * 상태 전이는 구현체 내부에서만 수행한다.
-     */
-    RecommendState handle(RecommendRequest request);
+    String code();
+
+    String description();
 
     /**
-     * 상태 식별자 (로그/감사용).
+     * 외부 응답 차단 여부(예: 설명 누락, 필수값 누락 등)
      */
-    String code();
+    boolean isBlocked();
 }

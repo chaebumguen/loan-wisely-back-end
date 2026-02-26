@@ -1,46 +1,30 @@
 package com.ccksy.loan.domain.recommend.result.response;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.ccksy.loan.domain.recommend.result.core.RecommendResult;
+import lombok.Builder;
+import lombok.Getter;
 
-/**
- * 추천 결과 최종 응답 DTO
- *
- * <p>Controller 에서 직접 반환되는 객체</p>
- */
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Getter
+@Builder
 public class RecommendResponse {
 
-    private List<RecommendItemResponse> items = new ArrayList<>();
-    private int totalCount;
+    private String recommendationId;
+    private String state;
+    private String reproduceKey;
+    private Integer inputLevel;
 
-    /**
-     * 설명/경고/정책 안내 메시지 (Decorator 결과 병합)
-     */
-    private List<String> messages = new ArrayList<>();
+    private List<RecommendItemResponse> items;
 
-    // --- getter / setter ---
-
-    public List<RecommendItemResponse> getItems() {
-        return items;
-    }
-
-    public void setItems(List<RecommendItemResponse> items) {
-        this.items = items;
-    }
-
-    public int getTotalCount() {
-        return totalCount;
-    }
-
-    public void setTotalCount(int totalCount) {
-        this.totalCount = totalCount;
-    }
-
-    public List<String> getMessages() {
-        return messages;
-    }
-
-    public void setMessages(List<String> messages) {
-        this.messages = messages;
+    public static RecommendResponse from(RecommendResult result, Long recommendId) {
+        return RecommendResponse.builder()
+                .recommendationId(recommendId == null ? null : String.valueOf(recommendId))
+                .state(result.getState())
+                .reproduceKey(result.getReproduceKey())
+                .inputLevel(result.getResolvedInputLevel())
+                .items(result.getItems().stream().map(RecommendItemResponse::from).collect(Collectors.toList()))
+                .build();
     }
 }

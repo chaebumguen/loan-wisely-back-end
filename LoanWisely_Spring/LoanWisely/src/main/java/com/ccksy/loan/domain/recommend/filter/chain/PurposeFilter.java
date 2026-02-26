@@ -1,57 +1,63 @@
-// FILE: domain/recommend/filter/chain/PurposeFilter.java
 package com.ccksy.loan.domain.recommend.filter.chain;
 
-import com.ccksy.loan.domain.recommend.dto.internal.RecommendContext;
-import org.springframework.stereotype.Component;
+import com.ccksy.loan.domain.recommend.filter.model.ExclusionReason;
+import com.ccksy.loan.domain.recommend.filter.model.FilterContext;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
-@Component
-public final class PurposeFilter {
+public class PurposeFilter extends IneligibilityFilter {
 
-    public String id() {
-        return "PurposeFilter:v1";
+    private final Set<String> allowedPurposeCodes;
+
+    public PurposeFilter(Set<String> allowedPurposeCodes) {
+        this.allowedPurposeCodes = allowedPurposeCodes;
     }
 
-    /**
-     * 입력 규약(v1):
-     * - ctx.options["loanPurpose"] : String
-     * - candidate["allowedPurposes"] : String (콤마 구분 또는 "*" 허용)
-     */
-    public String apply(RecommendContext ctx, Map<String, Object> candidate) {
-        Objects.requireNonNull(ctx, "ctx");
-        Objects.requireNonNull(candidate, "candidate");
-
-        String purpose = asText(ctx.getOptions().get("loanPurpose"));
-        String allowed = asText(candidate.get("allowedPurposes"));
-
-        if (purpose == null) return null;
-        if (allowed == null || "*".equals(allowed)) return null;
-
-        Set<String> allowedSet = parseAllowed(allowed);
-        if (!allowedSet.contains(purpose)) {
-            return "RECO_EXCLUDE_PURPOSE_NOT_ALLOWED";
+    @Override
+    protected Optional<ExclusionReason> doCheck(FilterContext ctx) {
+        String purpose = ctx.getLoanPurposeCode();
+        if (purpose == null || purpose.isBlank()) {
+            return Optional.empty();
         }
-        return null;
+        String normalized = normalizePurpose(purpose);
+        if (normalized == null || !allowedPurposeCodes.contains(normalized)) {
+            return Optional.of(ExclusionReason.of("PURPOSE_NOT_ALLOWED",
+                    "대출 목적이 정책상 허용되지 않습니다.",
+                    "purpose=" + purpose));
+        }
+        return Optional.empty();
     }
 
-    private static Set<String> parseAllowed(String allowed) {
-        String[] parts = allowed.split(",");
-        Set<String> set = new HashSet<>();
-        Arrays.stream(parts)
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .forEach(set::add);
-        return set;
-    }
-
-    private static String asText(Object v) {
-        if (v == null) return null;
-        String s = String.valueOf(v).trim();
-        return s.isEmpty() ? null : s;
+    private String normalizePurpose(String purpose) {
+        if (purpose == null) {
+            return null;
+        }
+        String v = purpose.trim().toUpperCase();
+        if (v.isEmpty()) {
+            return null;
+        }
+        if (v.contains("LIVING") || v.contains("생활")) {
+            return "LIVING";
+        }
+        if (v.contains("RENT") || v.contains("JEONSE") || v.contains("전세") || v.contains("임대")) {
+            return "RENT";
+        }
+        if (v.contains("HOUSING") || v.contains("주택") || v.contains("모기지")) {
+            return "HOUSING";
+        }
+        if (v.contains("BUSINESS") || v.contains("사업")) {
+            return "BUSINESS";
+        }
+        if (v.contains("EDU") || v.contains("교육")) {
+            return "EDU";
+        }
+        if (v.contains("ETC") || v.contains("기타")) {
+            return "ETC";
+        }
+        if (v.equals("LIVING") || v.equals("HOUSING") || v.equals("RENT") || v.equals("BUSINESS") || v.equals("EDU") || v.equals("ETC")) {
+            return v;
+        }
+        return v;
     }
 }

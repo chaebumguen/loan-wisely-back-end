@@ -1,17 +1,19 @@
 package com.ccksy.loan.domain.recommend.state;
 
-import com.ccksy.loan.domain.recommend.dto.request.RecommendRequest;
-
 public class BlockedState implements RecommendState {
-
-    @Override
-    public RecommendState handle(RecommendRequest request) {
-        // 차단 상태에서는 어떤 입력에도 전이 불가
-        return this;
-    }
 
     @Override
     public String code() {
         return "BLOCKED";
+    }
+
+    @Override
+    public String description() {
+        return "정책 위반 또는 필수 근거 누락으로 인해 응답이 차단되었습니다.";
+    }
+
+    @Override
+    public boolean isBlocked() {
+        return true;
     }
 }

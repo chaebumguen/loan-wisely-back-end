@@ -1,39 +1,27 @@
 package com.ccksy.loan.common.util;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 
-/**
- * 날짜/시간 공통 유틸
- *
- * 원칙:
- * - 시스템 전반에서 동일한 포맷 사용
- * - 시간 계산/판단 로직 금지
- */
 public final class DateTimeUtil {
 
-    private DateTimeUtil() {}
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-    public static final DateTimeFormatter DATE =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-    public static final DateTimeFormatter DATE_TIME =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-    public static String format(LocalDate date) {
-        return date == null ? null : date.format(DATE);
+    private DateTimeUtil() {
     }
 
-    public static String format(LocalDateTime dateTime) {
-        return dateTime == null ? null : dateTime.format(DATE_TIME);
+    public static ZonedDateTime nowKst() {
+        return ZonedDateTime.now(KST);
     }
 
-    public static LocalDate parseDate(String value) {
-        return value == null ? null : LocalDate.parse(value, DATE);
+    public static String formatKst(ZonedDateTime dateTime, String pattern) {
+        if (dateTime == null) return null;
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern(pattern).withZone(KST);
+        return fmt.format(dateTime.withZoneSameInstant(KST));
     }
 
-    public static LocalDateTime parseDateTime(String value) {
-        return value == null ? null : LocalDateTime.parse(value, DATE_TIME);
+    public static LocalDate parseDate(String text, String pattern) {
+        if (text == null || text.isBlank()) return null;
+        return LocalDate.parse(text, DateTimeFormatter.ofPattern(pattern));
     }
 }

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.admin.rawfile.mapper.QualityIssueMapper">
+
+    <select id="selectNextId" resultType="long">
+        SELECT QUALITY_ISSUE_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.admin.rawfile.entity.QualityIssue">
+        INSERT INTO QUALITY_ISSUE (
+            issue_id,
+            upload_id,
+            issue_type_code_value_id,
+            column_code,
+            detail_json_path,
+            status_code_value_id,
+            resolved_by_user_id,
+            resolved_at,
+            detected_stage_code_value_id,
+            issued_at
+        ) VALUES (
+            #{issueId},
+            #{uploadId},
+            #{issueTypeCodeValueId},
+            #{columnCode},
+            #{detailJsonPath},
+            #{statusCodeValueId},
+            #{resolvedByUserId},
+            #{resolvedAt},
+            #{detectedStageCodeValueId},
+            #{issuedAt}
+        )
+    </insert>
+
+</mapper>

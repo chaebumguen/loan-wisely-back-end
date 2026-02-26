@@ -1,111 +1,68 @@
-// FILE: domain/recommend/dto/internal/RecommendContext.java
 package com.ccksy.loan.domain.recommend.dto.internal;
 
-import com.ccksy.loan.domain.recommend.command.RecommendCommand;
-import com.ccksy.loan.domain.recommend.dto.request.RecommendRequest;
+import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
- * 프로세스 내부 컨텍스트(외부 DTO와 분리).
- *
- * v1 규칙:
- * - 외부 입력(RecommendRequest/RecommendCommand)을 내부 실행 단위로 정규화
- * - 판단/계산 로직 포함 금지 (컨텍스트는 "데이터 운반"만)
- * - 결정론/재현을 위한 버전/옵션을 보관 (스냅샷/전략 ID는 v1에서 포함하지 않음)
+ * 프로세스 내부 컨텍스트 (외부 DTO와 분리)
+ * - domain/user, domain/consent, domain/product 로딩 결과 및 중간 산출물을 보관
+ * - v1에서는 "확장 가능"하게만 최소 골격으로 둠
  */
-public final class RecommendContext {
-
-    private final Long userId;
-
-    // Approved-only references (ENGINE이 소비하는 기준)
-    private final String policyVersion;
-    private final String creditMetaVersion;
-    private final String financialMetaVersion;
-
-    // 결정론을 위한 옵션(TopN, flags, sourceBatchId 등) - 키 정렬은 v1에서 수행하지 않음(별도 컴포넌트 책임)
-    private final Map<String, Object> options;
-
-    // 실행 시각(감사용: 판단 결과에 영향 주면 안 됨)
-    private final LocalDateTime requestedAt;
-
-    private RecommendContext(
-            Long userId,
-            String policyVersion,
-            String creditMetaVersion,
-            String financialMetaVersion,
-            Map<String, Object> options,
-            LocalDateTime requestedAt
-    ) {
-        this.userId = Objects.requireNonNull(userId, "userId");
-        this.policyVersion = requireText(policyVersion, "policyVersion");
-        this.creditMetaVersion = requireText(creditMetaVersion, "creditMetaVersion");
-        this.financialMetaVersion = requireText(financialMetaVersion, "financialMetaVersion");
-        this.options = Collections.unmodifiableMap(options == null ? Collections.emptyMap() : options);
-        this.requestedAt = Objects.requireNonNull(requestedAt, "requestedAt");
-    }
-
-    public static RecommendContext from(RecommendCommand command) {
-        Objects.requireNonNull(command, "command");
-        return new RecommendContext(
-                command.getUserId(),
-                command.getPolicyVersion(),
-                command.getCreditMetaVersion(),
-                command.getFinancialMetaVersion(),
-                command.getOptions(),
-                command.getRequestedAt()
-        );
-    }
+@Getter
+@Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
+public class RecommendContext {
 
     /**
-     * v1 기본 매핑.
-     * - userId는 인증 컨텍스트에서 주입하는 것이 원칙.
-     * - request에는 userId가 없을 수 있으므로, service에서 userId를 주입하여 생성한다.
+     * 요청 식별
      */
-    public static RecommendContext from(Long userIdFromAuth, RecommendRequest request) {
-        Objects.requireNonNull(userIdFromAuth, "userIdFromAuth");
-        Objects.requireNonNull(request, "request");
-        return new RecommendContext(
-                userIdFromAuth,
-                requireText(request.getPolicyVersion(), "policyVersion"),
-                requireText(request.getCreditMetaVersion(), "creditMetaVersion"),
-                requireText(request.getFinancialMetaVersion(), "financialMetaVersion"),
-                request.getOptions(),
-                LocalDateTime.now()
-        );
-    }
+    private Long userId;
+    private String requestTraceId;
 
-    public Long getUserId() {
-        return userId;
-    }
+    /**
+     * 요청 시각(프로세스 시작 시점)
+     * - 동일 요청의 재현성을 위해 스냅샷 시간 기준으로 사용할 수 있음
+     */
+    private LocalDateTime requestedAt;
 
-    public String getPolicyVersion() {
-        return policyVersion;
-    }
+    /**
+     * 최종 확정 LV (프로필/동의 로딩 후 결정)
+     */
+    private Integer resolvedInputLevel;
 
-    public String getCreditMetaVersion() {
-        return creditMetaVersion;
-    }
+    /**
+     * 동의 상태(레벨별) 요약: key=level(1~3), value=true/false
+     * - consent 로딩 결과를 최소 형태로 유지
+     */
+    @Builder.Default
+    private Map<Integer, Boolean> consentByLevel = Map.of();
 
-    public String getFinancialMetaVersion() {
-        return financialMetaVersion;
-    }
+    /**
+     * 파생 Feature (v1: Map으로 시작, 추후 타입화 가능)
+     */
+    @Builder.Default
+    private Map<String, Object> features = Map.of();
 
-    public Map<String, Object> getOptions() {
-        return options;
-    }
+    /**
+     * 후보 상품 ID 목록(추천 파이프라인 입력)
+     */
+    @Builder.Default
+    private List<Long> candidateProductIds = new ArrayList<>();
 
-    public LocalDateTime getRequestedAt() {
-        return requestedAt;
-    }
+    /**
+     * 추천 결과 상품 ID 목록(정렬 후)
+     */
+    @Builder.Default
+    private List<Long> recommendedProductIds = new ArrayList<>();
 
-    private static String requireText(String value, String field) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new IllegalArgumentException(field + " must not be blank");
-        }
-        return value.trim();
-    }
+    /**
+     * 제외 사유: key=productId, value=reasonCode(or message)
+     */
+    @Builder.Default
+    private Map<Long, String> excludedReasons = Map.of();
 }

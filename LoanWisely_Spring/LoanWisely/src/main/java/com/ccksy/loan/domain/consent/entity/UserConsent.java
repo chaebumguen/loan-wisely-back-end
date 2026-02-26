@@ -1,51 +1,48 @@
 package com.ccksy.loan.domain.consent.entity;
 
-import java.time.Instant;
+import com.ccksy.loan.domain.consent.dto.request.UserConsentRequest;
+import lombok.*;
+
+import java.time.LocalDateTime;
 
 /**
- * ERD: USER_CONSENT(consent_id, user_id, consent_type_code_value_id, agreed_yn, agreed_at, expired_at, ...):contentReference[oaicite:13]{index=13}
+ * 사용자 LV별 동의 이력 엔티티
+ * - 이력 불변: 업데이트 금지, 신규 이력만 추가
+ * - 최신 유효는 is_active='Y'로 식별
  */
+@Getter
+@Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserConsent {
 
+    // PK는 DB 시퀀스/Mapper에서 처리 (필드만 정의)
     private Long consentId;
+
     private Long userId;
 
-    // code_value_id 형태로 저장(코드사전 연동 고려)
-    private String consentTypeCodeValueId;
+    /**
+     * 1~3 (LV)
+     */
+    private Integer consentLevel;
 
-    // Y/N
-    private String agreedYn;
+    /**
+     * "Y"/"N"
+     */
+    private String consentGiven;
 
-    private Instant agreedAt;
-    private Instant expiredAt;
-
-    // JSON은 DB 저장 금지 → 파일 경로로 저장
-    private String purposeTagsPath;
-
-    // Y/N
+    /**
+     * "Y"/"N"
+     */
     private String isActive;
 
-    public Long getConsentId() { return consentId; }
-    public void setConsentId(Long consentId) { this.consentId = consentId; }
+    private LocalDateTime createdAt;
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
-
-    public String getConsentTypeCodeValueId() { return consentTypeCodeValueId; }
-    public void setConsentTypeCodeValueId(String consentTypeCodeValueId) { this.consentTypeCodeValueId = consentTypeCodeValueId; }
-
-    public String getAgreedYn() { return agreedYn; }
-    public void setAgreedYn(String agreedYn) { this.agreedYn = agreedYn; }
-
-    public Instant getAgreedAt() { return agreedAt; }
-    public void setAgreedAt(Instant agreedAt) { this.agreedAt = agreedAt; }
-
-    public Instant getExpiredAt() { return expiredAt; }
-    public void setExpiredAt(Instant expiredAt) { this.expiredAt = expiredAt; }
-
-    public String getPurposeTagsPath() { return purposeTagsPath; }
-    public void setPurposeTagsPath(String purposeTagsPath) { this.purposeTagsPath = purposeTagsPath; }
-
-    public String getIsActive() { return isActive; }
-    public void setIsActive(String isActive) { this.isActive = isActive; }
+    public static UserConsent from(UserConsentRequest req) {
+        return UserConsent.builder()
+                .userId(req.getUserId())
+                .consentLevel(req.getConsentLevel())
+                .consentGiven(Boolean.TRUE.equals(req.getConsentGiven()) ? "Y" : "N")
+                .build();
+    }
 }

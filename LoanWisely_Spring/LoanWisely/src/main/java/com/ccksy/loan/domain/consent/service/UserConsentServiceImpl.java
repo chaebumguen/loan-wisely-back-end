@@ -1,64 +1,70 @@
-﻿// FILE: domain/consent/service/UserConsentServiceImpl.java
 package com.ccksy.loan.domain.consent.service;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Objects;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.ccksy.loan.common.exception.BusinessException;
 import com.ccksy.loan.common.exception.ErrorCode;
+import com.ccksy.loan.domain.consent.dto.request.UserConsentRequest;
+import com.ccksy.loan.domain.consent.dto.response.UserConsentResponse;
 import com.ccksy.loan.domain.consent.entity.UserConsent;
 import com.ccksy.loan.domain.consent.mapper.UserConsentMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * UserConsentService 援ы쁽泥?(v2)
- *
- * - DB append-only ?대젰 ?곸옱
- * - ?꾩옱 ?좏슚 ?숈쓽만 議고쉶
- */
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
+@RequiredArgsConstructor
 public class UserConsentServiceImpl implements UserConsentService {
-
-    private static final long DEFAULT_EXPIRE_DAYS = 365L;
 
     private final UserConsentMapper userConsentMapper;
 
-    public UserConsentServiceImpl(UserConsentMapper userConsentMapper) {
-        this.userConsentMapper = Objects.requireNonNull(userConsentMapper, "userConsentMapper");
+    @Override
+    @Transactional
+    public UserConsentResponse upsert(UserConsentRequest request) {
+        request.assertRequiredFields();
+
+        UserConsent entity = UserConsent.from(request)
+                .toBuilder()
+                .isActive("Y")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        // 기존 활성 동의 비활성 처리 후 신규 insert
+        userConsentMapper.deactivateActiveByUserIdAndLevel(entity.getUserId(), entity.getConsentLevel());
+        userConsentMapper.insertUserConsent(entity);
+
+        UserConsent latest = userConsentMapper.selectLatestActiveByUserIdAndLevel(entity.getUserId(), entity.getConsentLevel());
+        if (latest == null) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "동의 저장 후 최신 조회에 실패했습니다.");
+        }
+        return UserConsentResponse.from(latest);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean hasConsent(Long userId, String consentType) {
-        Objects.requireNonNull(userId, "userId must not be null");
-        Objects.requireNonNull(consentType, "consentType must not be null");
+    public List<UserConsentResponse> getActiveConsents(Long userId) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "userId는 필수입니다.");
+        }
 
-        List<UserConsent> active = userConsentMapper.findActiveByUserId(userId);
-        return active.stream()
-                .anyMatch(c -> consentType.equalsIgnoreCase(String.valueOf(c.getConsentTypeCodeValueId())));
+        List<UserConsent> list = userConsentMapper.selectActiveByUserId(userId);
+        return list.stream().map(UserConsentResponse::from).collect(Collectors.toList());
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void saveConsent(Long userId, String consentType, boolean agreed) {
-        Objects.requireNonNull(userId, "userId must not be null");
-        Objects.requireNonNull(consentType, "consentType must not be null");
+    @Transactional(readOnly = true)
+    public List<UserConsentResponse> getHistory(Long userId, Integer consentLevel) {
+        validateLevel(consentLevel);
 
-        UserConsent entity = new UserConsent();
-        entity.setUserId(userId);
-        entity.setConsentTypeCodeValueId(consentType);
-        entity.setAgreedYn(agreed ? "Y" : "N");
-        entity.setAgreedAt(Instant.now());
-        entity.setExpiredAt(Instant.now().plus(DEFAULT_EXPIRE_DAYS, ChronoUnit.DAYS));
-        entity.setIsActive("Y");
+        List<UserConsent> history = userConsentMapper.selectHistoryByUserIdAndLevel(userId, consentLevel);
+        return history.stream().map(UserConsentResponse::from).collect(Collectors.toList());
+    }
 
-        int inserted = userConsentMapper.insert(entity);
-        if (inserted <= 0) {
-            throw new BusinessException(ErrorCode.COMMON_INTERNAL_ERROR);
+    private void validateLevel(Integer consentLevel) {
+        if (consentLevel == null || consentLevel < 1 || consentLevel > 3) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "consentLevel은 1~3 범위여야 합니다.");
         }
     }
 }

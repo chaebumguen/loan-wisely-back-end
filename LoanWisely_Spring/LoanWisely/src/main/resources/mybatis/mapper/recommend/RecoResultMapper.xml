@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.recommend.mapper.RecoResultMapper">
+
+    <resultMap id="RecoResultResultMap" type="com.ccksy.loan.domain.recommend.entity.RecoResult">
+        <id     property="resultId"     column="result_id"/>
+        <result property="requestId"    column="request_id"/>
+        <result property="overallScore" column="overall_score"/>
+        <result property="policyVersion" column="policy_version"/>
+        <result property="confidenceLevelCodeValueId" column="confidence_level_code_value_id"/>
+        <result property="explanationJsonPath" column="explanation_json_path"/>
+        <result property="createdAt"    column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.recommend.entity.RecoResult">
+        INSERT INTO RECO_RESULT (
+            result_id,
+            request_id,
+            overall_score,
+            policy_version,
+            confidence_level_code_value_id,
+            explanation_json_path,
+            created_at
+        ) VALUES (
+            RECO_RESULT_SEQ.NEXTVAL,
+            #{requestId},
+            #{overallScore},
+            #{policyVersion},
+            #{confidenceLevelCodeValueId},
+            #{explanationJsonPath},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectNextId" resultType="long">
+        SELECT RECO_RESULT_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <insert id="insertWithId" parameterType="com.ccksy.loan.domain.recommend.entity.RecoResult">
+        INSERT INTO RECO_RESULT (
+            result_id,
+            request_id,
+            overall_score,
+            policy_version,
+            confidence_level_code_value_id,
+            explanation_json_path,
+            created_at
+        ) VALUES (
+            #{resultId},
+            #{requestId},
+            #{overallScore},
+            #{policyVersion},
+            #{confidenceLevelCodeValueId},
+            #{explanationJsonPath},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectById" parameterType="long" resultMap="RecoResultResultMap">
+        SELECT *
+          FROM RECO_RESULT
+         WHERE result_id = #{resultId}
+    </select>
+
+</mapper>

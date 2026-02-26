@@ -1,71 +1,41 @@
-// FILE: domain/recommend/dto/request/RecommendRequest.java
 package com.ccksy.loan.domain.recommend.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
+import com.ccksy.loan.common.exception.BusinessException;
+import com.ccksy.loan.common.exception.ErrorCode;
 import jakarta.validation.constraints.NotNull;
-
-import java.util.Collections;
-import java.util.Map;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
- * 추천 실행 요청 DTO.
- *
- * v1 규칙:
- * - Controller는 이 DTO를 검증(@Valid)만 하고 판단/해석 로직은 금지
- * - 실제 userId는 인증 컨텍스트에서 획득(요청 바디에 포함하지 않음)
- * - 버전/옵션은 결정론(재현성) 근거로 사용됨
+ * 추천 요청(외부 입력)
+ * - v1: 최소 입력만 받음
+ * - LV는 user_profile 쪽 최신 유효 이력에서 식별 가능해야 함(추후 프로세스에서 확정)
  */
-public final class RecommendRequest {
+@Getter
+@Setter
+@NoArgsConstructor
+public class RecommendRequest {
 
-    @NotBlank
-    private String policyVersion;
-
-    @NotBlank
-    private String creditMetaVersion;
-
-    @NotBlank
-    private String financialMetaVersion;
+    private Long userId;
 
     /**
-     * 결정론 옵션(TopN, flags, sourceBatchId 등)
-     * - v1에서는 스키마를 강제하지 않고 key/value로 받는다.
+     * 요청 옵션: 사용자가 제공했다고 주장하는 LV(1~3)
+     * - v1에서는 참고값으로만 받고, 실제 적용 LV는 내부 로딩 결과로 확정하는 것을 권장
      */
-    @NotNull
-    private Map<String, Object> options = Collections.emptyMap();
+    private Integer requestedInputLevel;
 
-    public RecommendRequest() {
-        // Jackson
-    }
+    /**
+     * 호출 추적용(프론트/게이트웨이에서 전달)
+     */
+    private String requestTraceId;
 
-    public String getPolicyVersion() {
-        return policyVersion;
-    }
-
-    public void setPolicyVersion(String policyVersion) {
-        this.policyVersion = policyVersion;
-    }
-
-    public String getCreditMetaVersion() {
-        return creditMetaVersion;
-    }
-
-    public void setCreditMetaVersion(String creditMetaVersion) {
-        this.creditMetaVersion = creditMetaVersion;
-    }
-
-    public String getFinancialMetaVersion() {
-        return financialMetaVersion;
-    }
-
-    public void setFinancialMetaVersion(String financialMetaVersion) {
-        this.financialMetaVersion = financialMetaVersion;
-    }
-
-    public Map<String, Object> getOptions() {
-        return options;
-    }
-
-    public void setOptions(Map<String, Object> options) {
-        this.options = (options == null) ? Collections.emptyMap() : options;
+    public void assertRequiredFields() {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "userId는 필수입니다.");
+        }
+        if (requestedInputLevel != null && (requestedInputLevel < 1 || requestedInputLevel > 3)) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "requestedInputLevel은 1~3 범위여야 합니다.");
+        }
     }
 }

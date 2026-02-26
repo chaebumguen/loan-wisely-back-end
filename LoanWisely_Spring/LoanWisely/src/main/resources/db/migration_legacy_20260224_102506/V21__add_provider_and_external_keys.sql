@@ -1,0 +1,34 @@
+-- PROVIDER: 금융회사
+CREATE TABLE PROVIDER (
+    provider_id   NUMBER          NOT NULL,
+    fin_co_no     VARCHAR2(20)    NOT NULL,
+    company_name  VARCHAR2(200)   NOT NULL,
+    created_at    TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    updated_at    TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT PK_PROVIDER PRIMARY KEY (provider_id),
+    CONSTRAINT UQ_PROVIDER_FIN_CO_NO UNIQUE (fin_co_no)
+);
+
+CREATE SEQUENCE PROVIDER_SEQ
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE INDEX IDX_PROVIDER_NAME
+    ON PROVIDER (company_name);
+
+-- LOAN_PRODUCT: FSS 외부 키/표시정보 추가
+ALTER TABLE LOAN_PRODUCT ADD (
+    fin_prdt_cd   VARCHAR2(50),
+    fin_co_no     VARCHAR2(20),
+    company_name  VARCHAR2(200),
+    join_way      VARCHAR2(200),
+    cb_name       VARCHAR2(100)
+);
+
+CREATE INDEX IDX_LOAN_PRODUCT_FSS_KEY
+    ON LOAN_PRODUCT (fin_co_no, fin_prdt_cd);
+
+ALTER TABLE LOAN_PRODUCT
+    ADD CONSTRAINT UQ_LOAN_PRODUCT_FSS UNIQUE (fin_co_no, fin_prdt_cd);

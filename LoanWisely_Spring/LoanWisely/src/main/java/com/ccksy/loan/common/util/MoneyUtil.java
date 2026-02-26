@@ -1,33 +1,25 @@
 package com.ccksy.loan.common.util;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.text.NumberFormat;
+import java.util.Locale;
 
-/**
- * 금액 처리 공통 유틸
- *
- * ⚠ 주의:
- * - 금리/한도/점수 계산 금지 (ENGINE 책임)
- * - 반올림 규칙 통일 목적
- */
 public final class MoneyUtil {
 
-    private MoneyUtil() {}
-
-    /** 원 단위 절사 */
-    public static BigDecimal floorWon(BigDecimal value) {
-        if (value == null) return null;
-        return value.setScale(0, RoundingMode.FLOOR);
+    private MoneyUtil() {
     }
 
-    /** 소수점 n자리 반올림 */
-    public static BigDecimal round(BigDecimal value, int scale) {
-        if (value == null) return null;
-        return value.setScale(scale, RoundingMode.HALF_UP);
+    public static BigDecimal parse(String amount) {
+        if (amount == null || amount.isBlank()) return null;
+        String normalized = amount.replaceAll("[,\\s]", "");
+        return new BigDecimal(normalized);
     }
 
-    /** null-safe BigDecimal */
-    public static BigDecimal zeroIfNull(BigDecimal value) {
-        return value == null ? BigDecimal.ZERO : value;
+    public static String format(BigDecimal amount) {
+        if (amount == null) return null;
+        NumberFormat nf = NumberFormat.getNumberInstance(Locale.KOREA);
+        nf.setGroupingUsed(true);
+        nf.setMaximumFractionDigits(0);
+        return nf.format(amount);
     }
 }

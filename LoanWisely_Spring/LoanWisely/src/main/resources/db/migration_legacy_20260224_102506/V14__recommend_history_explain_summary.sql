@@ -1,0 +1,3 @@
+ALTER TABLE RECOMMEND_HISTORY ADD (
+    explain_summary VARCHAR2(2000)
+);

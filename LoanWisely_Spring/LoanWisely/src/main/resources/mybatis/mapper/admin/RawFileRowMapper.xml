@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.admin.rawfile.mapper.RawFileRowMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO RAW_FILE_ROW (
+            row_id,
+            upload_id,
+            row_num,
+            row_json,
+            created_at
+        )
+        <foreach collection="rows" item="row" separator="UNION ALL">
+            SELECT
+                #{row.rowId},
+                #{row.uploadId},
+                #{row.rowNum},
+                #{row.rowJson},
+                #{row.createdAt}
+            FROM dual
+        </foreach>
+    </insert>
+
+    <insert id="insertOne">
+        INSERT INTO RAW_FILE_ROW (
+            row_id,
+            upload_id,
+            row_num,
+            row_json,
+            created_at
+        ) VALUES (
+            #{row.rowId},
+            #{row.uploadId},
+            #{row.rowNum},
+            #{row.rowJson},
+            #{row.createdAt}
+        )
+    </insert>
+
+    <select id="selectNextId" resultType="long">
+        SELECT RAW_FILE_ROW_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <select id="countByUploadId" parameterType="long" resultType="int">
+        SELECT COUNT(*)
+          FROM RAW_FILE_ROW
+         WHERE upload_id = #{uploadId}
+    </select>
+
+</mapper>

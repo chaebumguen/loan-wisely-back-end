@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.admin.rawfile.mapper.EdaMetricMapper">
+
+    <select id="selectNextId" resultType="long">
+        SELECT EDA_METRIC_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.admin.rawfile.entity.EdaMetric">
+        INSERT INTO EDA_METRIC (
+            metric_id,
+            eda_run_id,
+            metric_name,
+            metric_type,
+            metric_key,
+            metric_value_path,
+            created_at
+        ) VALUES (
+            #{metricId},
+            #{edaRunId},
+            #{metricName},
+            #{metricType},
+            #{metricKey},
+            #{metricValuePath},
+            #{createdAt}
+        )
+    </insert>
+
+</mapper>

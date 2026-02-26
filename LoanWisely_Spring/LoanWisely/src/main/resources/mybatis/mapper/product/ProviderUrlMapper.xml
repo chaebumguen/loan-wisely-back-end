@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.product.mapper.ProviderUrlMapper">
+
+    <resultMap id="ProviderUrlMap" type="com.ccksy.loan.domain.product.entity.ProviderUrl">
+        <id property="finCoNo" column="fin_co_no"/>
+        <result property="homepageUrl" column="homepage_url"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectByFinCoNo" resultMap="ProviderUrlMap">
+        SELECT *
+          FROM PROVIDER_URL
+         WHERE TRIM(fin_co_no) = TRIM(#{finCoNo})
+    </select>
+
+    <insert id="upsert" parameterType="com.ccksy.loan.domain.product.entity.ProviderUrl">
+        MERGE INTO PROVIDER_URL t
+        USING (
+            SELECT #{finCoNo} AS fin_co_no,
+                   #{homepageUrl} AS homepage_url
+              FROM dual
+        ) s
+        ON (t.fin_co_no = s.fin_co_no)
+        WHEN MATCHED THEN
+          UPDATE SET t.homepage_url = s.homepage_url,
+                     t.updated_at = SYSTIMESTAMP
+        WHEN NOT MATCHED THEN
+          INSERT (fin_co_no, homepage_url, created_at, updated_at)
+          VALUES (s.fin_co_no, s.homepage_url, SYSTIMESTAMP, SYSTIMESTAMP)
+    </insert>
+</mapper>

@@ -1,0 +1,1 @@
+CREATE INDEX IDX_USER_AUTH_STATUS ON USER_AUTH (status, is_locked);

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.recommend.mapper.RecoPolicyMapper">
+
+    <resultMap id="RecoPolicyResultMap" type="com.ccksy.loan.domain.recommend.entity.RecoPolicy">
+        <id     property="policyId"   column="policy_id"/>
+        <result property="version"    column="version"/>
+        <result property="policyTypeCodeValueId" column="policy_type_code_value_id"/>
+        <result property="policyKey"  column="policy_key"/>
+        <result property="policyValue" column="policy_value"/>
+        <result property="effectiveFrom" column="effective_from"/>
+        <result property="effectiveTo"   column="effective_to"/>
+        <result property="status"     column="status"/>
+        <result property="approvedAt" column="approved_at"/>
+        <result property="approvedBy" column="approved_by"/>
+        <result property="isActive"   column="is_active"/>
+        <result property="createdAt"  column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.recommend.entity.RecoPolicy">
+        INSERT INTO RECO_POLICY (
+            policy_id,
+            version,
+            policy_type_code_value_id,
+            policy_key,
+            policy_value,
+            effective_from,
+            effective_to,
+            status,
+            approved_at,
+            approved_by,
+            is_active,
+            created_at
+        ) VALUES (
+            #{policyId},
+            #{version},
+            #{policyTypeCodeValueId},
+            #{policyKey},
+            #{policyValue},
+            #{effectiveFrom},
+            #{effectiveTo},
+            #{status},
+            #{approvedAt},
+            #{approvedBy},
+            #{isActive},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectNextId" resultType="long">
+        SELECT RECO_POLICY_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <select id="selectById" parameterType="long" resultMap="RecoPolicyResultMap">
+        SELECT *
+          FROM RECO_POLICY
+         WHERE policy_id = #{policyId}
+    </select>
+
+    <select id="selectByVersion" parameterType="string" resultMap="RecoPolicyResultMap">
+        SELECT *
+          FROM RECO_POLICY
+         WHERE version = #{version}
+         ORDER BY policy_id DESC
+    </select>
+
+    <!-- 임시: 최신 정책 조회 (승인/활성 플래그 전제 전) -->
+    <select id="selectLatest" resultMap="RecoPolicyResultMap">
+        SELECT *
+          FROM RECO_POLICY
+         ORDER BY created_at DESC, policy_id DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 활성/승인 정책 조회 -->
+    <select id="selectActive" resultMap="RecoPolicyResultMap">
+        SELECT *
+          FROM RECO_POLICY
+         WHERE is_active = 'Y'
+           AND status = 'APPROVED'
+         ORDER BY approved_at DESC, policy_id DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <select id="selectAll" resultMap="RecoPolicyResultMap">
+        SELECT *
+          FROM RECO_POLICY
+         ORDER BY created_at DESC, policy_id DESC
+    </select>
+
+    <update id="updatePolicyValue">
+        UPDATE RECO_POLICY
+           SET policy_value = #{policyValue}
+         WHERE policy_id = #{policyId}
+    </update>
+
+    <update id="approvePolicy">
+        UPDATE RECO_POLICY
+           SET status = #{status},
+               approved_by = #{approvedBy},
+               approved_at = #{approvedAt}
+         WHERE policy_id = #{policyId}
+    </update>
+
+    <update id="deactivateAll">
+        UPDATE RECO_POLICY
+           SET is_active = 'N'
+         WHERE is_active = 'Y'
+    </update>
+
+    <update id="activatePolicy">
+        UPDATE RECO_POLICY
+           SET is_active = 'Y'
+         WHERE policy_id = #{policyId}
+    </update>
+
+</mapper>

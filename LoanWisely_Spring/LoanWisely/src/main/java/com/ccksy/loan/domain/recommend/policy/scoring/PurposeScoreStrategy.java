@@ -1,44 +1,52 @@
-// FILE: domain/recommend/policy/scoring/PurposeScoreStrategy.java
 package com.ccksy.loan.domain.recommend.policy.scoring;
 
-import java.util.Objects;
+import com.ccksy.loan.domain.recommend.filter.model.FilterContext;
 
-import com.ccksy.loan.domain.recommend.dto.internal.RecommendContext;
-import com.ccksy.loan.domain.recommend.result.core.RecommendItem;
+import java.math.BigDecimal;
+import java.util.Map;
 
-/**
- * (Strategy) 대출 목적 적합도 점수 (v1)
- *
- * - ctx.options["loanPurpose"] 와 상품의 목적 코드/문자열이 일치하면 가점
- * - 목적 정보가 없으면 0점(결측은 불리/유리로 치우치지 않도록 중립 처리)
- */
-public final class PurposeScoreStrategy implements ScoreStrategy {
+public class PurposeScoreStrategy implements ScoreStrategy {
 
-    // v1 고정 키(RecommendContext.options)
-    private static final String OPT_LOAN_PURPOSE = "loanPurpose";
+    private final Map<String, BigDecimal> purposeWeight; // 목적 코드별 가중치
 
-    @Override
-    public String id() {
-        return "PurposeScoreStrategy:v1";
+    public PurposeScoreStrategy(Map<String, BigDecimal> purposeWeight) {
+        this.purposeWeight = purposeWeight;
     }
 
     @Override
-    public double score(RecommendContext ctx, RecommendItem item) {
-        Objects.requireNonNull(ctx, "ctx");
-        Objects.requireNonNull(item, "item");
+    public BigDecimal score(FilterContext ctx, Long productId) {
+        String purpose = ctx.getLoanPurposeCode();
+        String normalized = normalizePurpose(purpose);
+        if (normalized == null) {
+            return BigDecimal.ZERO;
+        }
+        return purposeWeight.getOrDefault(normalized, BigDecimal.ZERO);
+    }
 
-        String userPurpose = ScoreStrategyUtil.optText(ctx, OPT_LOAN_PURPOSE);
-        if (userPurpose == null) return 0.0d;
-
-        // 상품 목적 추출: getLoanPurpose / getPurpose / getPurposeCode / getLoanPurposeCode 순서로 시도
-        String itemPurpose =
-                ScoreStrategyUtil.tryGetText(item, "getLoanPurpose",
-                        "getPurpose",
-                        "getPurposeCode",
-                        "getLoanPurposeCode");
-
-        if (itemPurpose == null) return 0.0d;
-
-        return ScoreStrategyUtil.equalsIgnoreSpace(userPurpose, itemPurpose) ? 1.0d : 0.0d;
+    private String normalizePurpose(String purpose) {
+        if (purpose == null) {
+            return null;
+        }
+        String v = purpose.trim().toUpperCase();
+        if (v.isEmpty()) {
+            return null;
+        }
+        if (v.contains("LIVING") || v.contains("생활")) {
+            return "CREDIT";
+        }
+        if (v.contains("BUSINESS") || v.contains("사업")) {
+            return "CREDIT";
+        }
+        if (v.contains("HOUSING") || v.contains("주택") || v.contains("모기지")) {
+            return "MORTGAGE";
+        }
+        if (v.contains("RENT") || v.contains("JEONSE") || v.contains("전세") || v.contains("임대")) {
+            return "RENT";
+        }
+        if (v.equals("CREDIT") || v.equals("MORTGAGE") || v.equals("RENT")) {
+            return v;
+        }
+        return null;
     }
 }
+

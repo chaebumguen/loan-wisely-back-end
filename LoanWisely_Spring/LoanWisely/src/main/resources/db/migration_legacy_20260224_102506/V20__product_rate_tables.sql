@@ -1,0 +1,42 @@
+-- PRODUCT_INTEREST_RATE: 상품 금리(기본)
+CREATE TABLE PRODUCT_INTEREST_RATE (
+    rate_id     NUMBER          NOT NULL,
+    product_id  NUMBER          NOT NULL,
+    rate_base   NUMBER,
+    rate_min    NUMBER,
+    rate_max    NUMBER,
+    as_of_date  DATE            NOT NULL,
+    created_at  TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT PK_PRODUCT_INTEREST_RATE PRIMARY KEY (rate_id)
+);
+
+CREATE SEQUENCE PRODUCT_INTEREST_RATE_SEQ
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE INDEX IDX_PROD_INT_RATE_PRODUCT
+    ON PRODUCT_INTEREST_RATE (product_id, as_of_date DESC);
+
+-- PRODUCT_RATE_SNAPSHOT: 사용자/시점 기준 금리 스냅샷
+CREATE TABLE PRODUCT_RATE_SNAPSHOT (
+    rate_id     NUMBER          NOT NULL,
+    product_id  NUMBER          NOT NULL,
+    rate_min    NUMBER,
+    rate_max    NUMBER,
+    score_base  NUMBER,
+    rate_type   VARCHAR2(50),
+    as_of_date  DATE            NOT NULL,
+    created_at  TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT PK_PRODUCT_RATE_SNAPSHOT PRIMARY KEY (rate_id)
+);
+
+CREATE SEQUENCE PRODUCT_RATE_SNAPSHOT_SEQ
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE INDEX IDX_PROD_RATE_SNAPSHOT_PRODUCT
+    ON PRODUCT_RATE_SNAPSHOT (product_id, as_of_date DESC);

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.recommend.mapper.RecoEstimationDetailMapper">
+
+    <resultMap id="RecoEstimationDetailResultMap" type="com.ccksy.loan.domain.recommend.entity.RecoEstimationDetail">
+        <id     property="detailId"    column="detail_id"/>
+        <result property="snapshotId"  column="snapshot_id"/>
+        <result property="itemId"      column="item_id"/>
+        <result property="factorCode"  column="factor_code"/>
+        <result property="factorName"  column="factor_name"/>
+        <result property="factorValue" column="factor_value"/>
+        <result property="contribution" column="contribution"/>
+        <result property="createdAt"   column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.recommend.entity.RecoEstimationDetail">
+        INSERT INTO RECO_ESTIMATION_DETAIL (
+            detail_id,
+            snapshot_id,
+            item_id,
+            factor_code,
+            factor_name,
+            factor_value,
+            contribution,
+            created_at
+        ) VALUES (
+            RECO_ESTIMATION_DETAIL_SEQ.NEXTVAL,
+            #{snapshotId},
+            #{itemId},
+            #{factorCode},
+            #{factorName},
+            #{factorValue},
+            #{contribution},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectByItemId" parameterType="long" resultMap="RecoEstimationDetailResultMap">
+        SELECT *
+          FROM RECO_ESTIMATION_DETAIL
+         WHERE item_id = #{itemId}
+         ORDER BY created_at DESC, detail_id DESC
+    </select>
+
+</mapper>

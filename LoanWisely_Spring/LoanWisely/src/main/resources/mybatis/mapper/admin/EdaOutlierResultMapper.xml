@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.admin.rawfile.mapper.EdaOutlierResultMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO EDA_OUTLIER_RESULT (
+            outlier_id,
+            eda_run_id,
+            row_id,
+            column_code,
+            method_code_value_id,
+            flag,
+            reason
+        )
+        SELECT
+            EDA_OUTLIER_RESULT_SEQ.NEXTVAL,
+            t.eda_run_id,
+            t.row_id,
+            t.column_code,
+            t.method_code_value_id,
+            t.flag,
+            t.reason
+        FROM (
+            <foreach collection="rows" item="row" separator=" UNION ALL ">
+                SELECT
+                    #{row.edaRunId} AS eda_run_id,
+                    #{row.rowId} AS row_id,
+                    #{row.columnCode} AS column_code,
+                    #{row.methodCodeValueId} AS method_code_value_id,
+                    #{row.flag} AS flag,
+                    #{row.reason} AS reason
+                FROM dual
+            </foreach>
+        ) t
+    </insert>
+
+    <select id="selectNextId" resultType="long">
+        SELECT EDA_OUTLIER_RESULT_SEQ.NEXTVAL FROM dual
+    </select>
+
+</mapper>

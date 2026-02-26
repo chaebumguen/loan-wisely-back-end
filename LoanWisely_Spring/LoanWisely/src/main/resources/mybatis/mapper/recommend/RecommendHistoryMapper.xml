@@ -1,6 +1,88 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
 <mapper namespace="com.ccksy.loan.domain.recommend.mapper.RecommendHistoryMapper">
+
+    <resultMap id="RecommendHistoryResultMap" type="com.ccksy.loan.domain.recommend.entity.RecommendHistory">
+        <id     property="recommendId"      column="recommend_id"/>
+        <result property="userId"           column="user_id"/>
+
+        <result property="reproduceKey"     column="reproduce_key"/>
+        <result property="policyVersion"    column="policy_version"/>
+        <result property="metaVersion"      column="meta_version"/>
+
+        <result property="evidenceFilePath" column="evidence_file_path"/>
+        <result property="explainFilePath"  column="explain_file_path"/>
+        <result property="explainSummary"  column="explain_summary"/>
+        <result property="recoRequestId"   column="reco_request_id"/>
+        <result property="recoResultId"    column="reco_result_id"/>
+
+        <result property="recommendState"   column="recommend_state"/>
+        <result property="createdAt"        column="created_at"/>
+    </resultMap>
+
+    <!-- insert: PK? ???? ??, reproduce_key? ??? -->
+    <insert id="insertRecommendHistory" parameterType="com.ccksy.loan.domain.recommend.entity.RecommendHistory">
+        INSERT INTO RECOMMEND_HISTORY (
+            recommend_id,
+            user_id,
+            reproduce_key,
+            recommend_state,
+            policy_version,
+            meta_version,
+            evidence_file_path,
+            explain_file_path,
+            explain_summary,
+            reco_request_id,
+            reco_result_id,
+            created_at
+        ) VALUES (
+            #{recommendId},
+            #{userId},
+            #{reproduceKey},
+            #{recommendState},
+            #{policyVersion, jdbcType=VARCHAR},
+            #{metaVersion, jdbcType=VARCHAR},
+            #{evidenceFilePath, jdbcType=VARCHAR},
+            #{explainFilePath, jdbcType=VARCHAR},
+            #{explainSummary, jdbcType=VARCHAR},
+            #{recoRequestId, jdbcType=NUMERIC},
+            #{recoResultId, jdbcType=NUMERIC},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectNextId" resultType="long">
+        SELECT RECOMMEND_HISTORY_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <!-- reproduceKey ?? ?? -->
+    <select id="selectByReproduceKey" parameterType="string" resultMap="RecommendHistoryResultMap">
+        SELECT *
+          FROM RECOMMEND_HISTORY
+         WHERE reproduce_key = #{reproduceKey}
+    </select>
+
+    <select id="selectById" parameterType="long" resultMap="RecommendHistoryResultMap">
+        SELECT *
+          FROM RECOMMEND_HISTORY
+         WHERE recommend_id = #{recommendId}
+    </select>
+
+    <!-- userId ?? ??(???) -->
+    <select id="selectHistoryByUserId" parameterType="long" resultMap="RecommendHistoryResultMap">
+        SELECT *
+          FROM RECOMMEND_HISTORY
+         WHERE user_id = #{userId}
+         ORDER BY created_at DESC, recommend_id DESC
+    </select>
+
+    <select id="selectAll" resultMap="RecommendHistoryResultMap">
+        SELECT *
+          FROM RECOMMEND_HISTORY
+         ORDER BY created_at DESC, recommend_id DESC
+    </select>
+
 </mapper>

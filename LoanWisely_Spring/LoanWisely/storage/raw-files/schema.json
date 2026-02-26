@@ -1,0 +1,12 @@
+{
+  "rules": [
+    {
+      "match": "credit",
+      "required": ["user_id", "age", "income_year"]
+    },
+    {
+      "match": "product",
+      "required": ["product_id", "product_name"]
+    }
+  ]
+}

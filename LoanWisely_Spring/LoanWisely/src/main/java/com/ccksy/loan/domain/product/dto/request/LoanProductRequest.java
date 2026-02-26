@@ -1,65 +1,67 @@
 package com.ccksy.loan.domain.product.dto.request;
 
+import com.ccksy.loan.common.exception.BusinessException;
+import com.ccksy.loan.common.exception.ErrorCode;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDate;
+
+/**
+ * 상품 등록/수정 요청
+ * - 코드값은 CODE_VALUE 기반으로 관리된다는 전제(문자열 코드 식별자)
+ */
+@Getter
+@Setter
+@NoArgsConstructor
 public class LoanProductRequest {
 
-    // filters
-    private Long providerId;
-    private String productNameKeyword;
+    // 수정 시 사용
+    private Long productId;
 
+    @NotNull
+    private Long providerId;
+
+    @NotBlank
+    private String productName;
+
+    @NotBlank
     private String productTypeCodeValueId;
+
+    @NotBlank
     private String loanTypeCodeValueId;
+
+    @NotBlank
     private String repaymentTypeCodeValueId;
+
     private String collateralTypeCodeValueId;
     private String rateTypeCodeValueId;
 
-    // rate filters (latest snapshot 기준)
-    private Double maxRateUpperBound; // rate_max <= ?
-    private Double minRateUpperBound; // rate_min <= ?
+    private String note;
 
-    // pagination
-    private Integer page = 1;   // 1-based
-    private Integer size = 20;
+    /**
+     * 판매 종료일(옵션)
+     */
+    private LocalDate endDate;
 
-    // sorting (화이트리스트)
-    private String sortBy = "rateMin"; // rateMin | rateMax | productName | asOfDate
-    private String sortDir = "ASC";    // ASC | DESC
-
-    public Long getProviderId() { return providerId; }
-    public void setProviderId(Long providerId) { this.providerId = providerId; }
-
-    public String getProductNameKeyword() { return productNameKeyword; }
-    public void setProductNameKeyword(String productNameKeyword) { this.productNameKeyword = productNameKeyword; }
-
-    public String getProductTypeCodeValueId() { return productTypeCodeValueId; }
-    public void setProductTypeCodeValueId(String productTypeCodeValueId) { this.productTypeCodeValueId = productTypeCodeValueId; }
-
-    public String getLoanTypeCodeValueId() { return loanTypeCodeValueId; }
-    public void setLoanTypeCodeValueId(String loanTypeCodeValueId) { this.loanTypeCodeValueId = loanTypeCodeValueId; }
-
-    public String getRepaymentTypeCodeValueId() { return repaymentTypeCodeValueId; }
-    public void setRepaymentTypeCodeValueId(String repaymentTypeCodeValueId) { this.repaymentTypeCodeValueId = repaymentTypeCodeValueId; }
-
-    public String getCollateralTypeCodeValueId() { return collateralTypeCodeValueId; }
-    public void setCollateralTypeCodeValueId(String collateralTypeCodeValueId) { this.collateralTypeCodeValueId = collateralTypeCodeValueId; }
-
-    public String getRateTypeCodeValueId() { return rateTypeCodeValueId; }
-    public void setRateTypeCodeValueId(String rateTypeCodeValueId) { this.rateTypeCodeValueId = rateTypeCodeValueId; }
-
-    public Double getMaxRateUpperBound() { return maxRateUpperBound; }
-    public void setMaxRateUpperBound(Double maxRateUpperBound) { this.maxRateUpperBound = maxRateUpperBound; }
-
-    public Double getMinRateUpperBound() { return minRateUpperBound; }
-    public void setMinRateUpperBound(Double minRateUpperBound) { this.minRateUpperBound = minRateUpperBound; }
-
-    public Integer getPage() { return page; }
-    public void setPage(Integer page) { this.page = page; }
-
-    public Integer getSize() { return size; }
-    public void setSize(Integer size) { this.size = size; }
-
-    public String getSortBy() { return sortBy; }
-    public void setSortBy(String sortBy) { this.sortBy = sortBy; }
-
-    public String getSortDir() { return sortDir; }
-    public void setSortDir(String sortDir) { this.sortDir = sortDir; }
+    public void assertRequiredFields() {
+        if (providerId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "providerId는 필수입니다.");
+        }
+        if (productName == null || productName.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "productName은 필수입니다.");
+        }
+        if (productTypeCodeValueId == null || productTypeCodeValueId.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "productTypeCodeValueId는 필수입니다.");
+        }
+        if (loanTypeCodeValueId == null || loanTypeCodeValueId.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "loanTypeCodeValueId는 필수입니다.");
+        }
+        if (repaymentTypeCodeValueId == null || repaymentTypeCodeValueId.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "repaymentTypeCodeValueId는 필수입니다.");
+        }
+    }
 }

@@ -1,174 +1,52 @@
 package com.ccksy.loan.common.exception;
 
 import com.ccksy.loan.common.response.ApiResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.validation.BindException;
-import org.springframework.web.HttpRequestMethodNotSupportedException;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
+import lombok.extern.slf4j.Slf4j;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-/**
- * Version 1: 표준 오류 응답 제공
- * - 내부 정보 노출 방지(74)
- * - 오류 응답 일관성(75)
- * - 감사/추적을 위한 서버 로그는 남기되, 외부 응답은 최소화
- */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-    @ExceptionHandler(ValidationException.class)
-    public ResponseEntity<ApiResponse<Object>> handleValidationException(ValidationException ex, HttpServletRequest request) {
-        ErrorCode ec = ex.getErrorCode();
-        ApiResponse<Object> body = ApiResponse.failure(ec.getCode(), ec.getMessage(), ex.getFieldErrors(), traceId());
-        return ResponseEntity.status(ec.getHttpStatus()).body(body);
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
+        ErrorCode code = ex.getErrorCode() != null ? ex.getErrorCode() : ErrorCode.INTERNAL_ERROR;
+        log.warn("BusinessException: code={}, message={}", code.getCode(), ex.getMessage());
+        return ResponseEntity.status(code.getHttpStatus())
+                .body(ApiResponse.fail(code.getCode(), ex.getMessage()));
     }
 
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException ex, HttpServletRequest request) {
-        ErrorCode ec = ex.getErrorCode() != null ? ex.getErrorCode() : ErrorCode.COMMON_INTERNAL_ERROR;
-        ApiResponse<Object> body = ApiResponse.failure(ec.getCode(), ec.getMessage(), null, traceId());
-        return ResponseEntity.status(ec.getHttpStatus()).body(body);
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(ValidationException ex) {
+        ErrorCode code = ex.getErrorCode() != null ? ex.getErrorCode() : ErrorCode.VALIDATION_FAILED;
+        log.warn("ValidationException: code={}, fields={}", code.getCode(), ex.getFieldErrors());
+        return ResponseEntity.status(code.getHttpStatus())
+                .body(ApiResponse.fail(code.getCode(), code.getMessage(), ex.getFieldErrors()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Object>> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        Map<String, String> fieldErrors = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(err ->
-                fieldErrors.put(err.getField(), err.getDefaultMessage())
-        );
-
-        ApiResponse<Object> body = ApiResponse.failure(
-                ErrorCode.COMMON_VALIDATION_FAILED.getCode(),
-                ErrorCode.COMMON_VALIDATION_FAILED.getMessage(),
-                fieldErrors,
-                traceId()
-        );
-        return ResponseEntity.status(ErrorCode.COMMON_VALIDATION_FAILED.getHttpStatus()).body(body);
-    }
-
-    @ExceptionHandler(BindException.class)
-    public ResponseEntity<ApiResponse<Object>> handleBindException(BindException ex, HttpServletRequest request) {
-        Map<String, String> fieldErrors = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(err ->
-                fieldErrors.put(err.getField(), err.getDefaultMessage())
-        );
-
-        ApiResponse<Object> body = ApiResponse.failure(
-                ErrorCode.COMMON_VALIDATION_FAILED.getCode(),
-                ErrorCode.COMMON_VALIDATION_FAILED.getMessage(),
-                fieldErrors,
-                traceId()
-        );
-        return ResponseEntity.status(ErrorCode.COMMON_VALIDATION_FAILED.getHttpStatus()).body(body);
-    }
-
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ApiResponse<Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
-        ApiResponse<Object> body = ApiResponse.failure(
-                ErrorCode.COMMON_BAD_REQUEST.getCode(),
-                ErrorCode.COMMON_BAD_REQUEST.getMessage(),
-                null,
-                traceId()
-        );
-        return ResponseEntity.status(ErrorCode.COMMON_BAD_REQUEST.getHttpStatus()).body(body);
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Object>> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
-        ApiResponse<Object> body = ApiResponse.failure(
-                ErrorCode.COMMON_BAD_REQUEST.getCode(),
-                ErrorCode.COMMON_BAD_REQUEST.getMessage(),
-                null,
-                traceId()
-        );
-        return ResponseEntity.status(ErrorCode.COMMON_BAD_REQUEST.getHttpStatus()).body(body);
-    }
-
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiResponse<Object>> handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
-        ErrorCode ec = ErrorCode.COMMON_INTERNAL_ERROR;
-        String msg = ex.getMessage();
-        if (msg != null && msg.contains("Unauthenticated")) {
-            ec = ErrorCode.COMMON_UNAUTHORIZED;
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleBeanValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
+            errors.put(fe.getField(), fe.getDefaultMessage());
         }
-
-        ApiResponse<Object> body = ApiResponse.failure(ec.getCode(), ec.getMessage(), null, traceId());
-        return ResponseEntity.status(ec.getHttpStatus()).body(body);
-    }
-
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ApiResponse<Object>> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
-        ApiResponse<Object> body = ApiResponse.failure(
-                ErrorCode.COMMON_UNAUTHORIZED.getCode(),
-                ErrorCode.COMMON_UNAUTHORIZED.getMessage(),
-                null,
-                traceId()
-        );
-        return ResponseEntity.status(ErrorCode.COMMON_UNAUTHORIZED.getHttpStatus()).body(body);
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
-        ApiResponse<Object> body = ApiResponse.failure(
-                ErrorCode.COMMON_FORBIDDEN.getCode(),
-                ErrorCode.COMMON_FORBIDDEN.getMessage(),
-                null,
-                traceId()
-        );
-        return ResponseEntity.status(ErrorCode.COMMON_FORBIDDEN.getHttpStatus()).body(body);
-    }
-
-    @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ApiResponse<Object>> handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request) {
-        ApiResponse<Object> body = ApiResponse.failure(
-                ErrorCode.COMMON_NOT_FOUND.getCode(),
-                ErrorCode.COMMON_NOT_FOUND.getMessage(),
-                null,
-                traceId()
-        );
-        return ResponseEntity.status(ErrorCode.COMMON_NOT_FOUND.getHttpStatus()).body(body);
-    }
-
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ApiResponse<Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
-        ApiResponse<Object> body = ApiResponse.failure(
-                ErrorCode.COMMON_BAD_REQUEST.getCode(),
-                ErrorCode.COMMON_BAD_REQUEST.getMessage(),
-                null,
-                traceId()
-        );
-        return ResponseEntity.status(ErrorCode.COMMON_BAD_REQUEST.getHttpStatus()).body(body);
+        ValidationException wrapped = new ValidationException(errors);
+        return handleValidation(wrapped);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Object>> handleUnhandledException(Exception ex, HttpServletRequest request) {
-        log.error("[EXCEPTION] Unhandled error. path={}, traceId={}", request.getRequestURI(), traceId(), ex);
-
-        ApiResponse<Object> body = ApiResponse.failure(
-                ErrorCode.COMMON_INTERNAL_ERROR.getCode(),
-                ErrorCode.COMMON_INTERNAL_ERROR.getMessage(),
-                null,
-                traceId()
-        );
-        return ResponseEntity.status(ErrorCode.COMMON_INTERNAL_ERROR.getHttpStatus()).body(body);
+    public ResponseEntity<ApiResponse<Void>> handleUnknown(Exception ex) {
+        ErrorCode code = ErrorCode.INTERNAL_ERROR;
+        log.error("Unhandled exception", ex);
+        return ResponseEntity.status(code.getHttpStatus())
+                .body(ApiResponse.fail(code.getCode(), code.getMessage()));
     }
-
-    private String traceId() {
-        return MDC.get("traceId");
-    }
-
 }
