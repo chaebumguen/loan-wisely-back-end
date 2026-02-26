@@ -16,7 +16,7 @@ spring:
   datasource:
     driver-class-name: oracle.jdbc.OracleDriver
     url: jdbc:oracle:thin:@localhost:1521/XE
-    username: C##LOANWISELY_MIG10
+    username: C##DEMONSTRATION
     password: CCKSY
 
   flyway:
@@ -27,8 +27,8 @@ spring:
     clean-on-validation-error: false
     validate-on-migrate: true
     table: FLYWAY_SCHEMA_HISTORY
-    default-schema: C##LOANWISELY_MIG10
-    schemas: C##LOANWISELY_MIG10
+    default-schema: C##DEMONSTRATION
+    schemas: C##DEMONSTRATION
 
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml
