@@ -1,5 +1,0 @@
-package com.ccksy.loan.adapter.ml;
-
-public class MlScoreAdapter {
-
-}
