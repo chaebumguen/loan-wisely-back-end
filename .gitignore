@@ -1,1 +1,23 @@
-/.metadata
+.metadata
+# 빌드 출력 디렉터리 및 파일
+/build/
+/out/
+*.class
+*.jar
+*.war
+
+# Gradle 관련 캐시 파일
+.gradle/
+.gradletasknamecache
+
+# IDE 설정 파일 (예시: IntelliJ, Eclipse)
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+local.properties
+
+# 운영체제별 파일
+.DS_Store
+Thumbs.db

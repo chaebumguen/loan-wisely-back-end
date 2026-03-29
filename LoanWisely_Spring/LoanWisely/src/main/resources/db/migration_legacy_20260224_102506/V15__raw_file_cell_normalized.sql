@@ -1,0 +1,14 @@
+-- RAW_FILE_CELL (normalized key-value per row)
+CREATE TABLE RAW_FILE_CELL (
+    cell_id      NUMBER        NOT NULL,
+    upload_id    NUMBER        NOT NULL,
+    row_num      NUMBER        NOT NULL,
+    column_name  VARCHAR2(200) NOT NULL,
+    column_value VARCHAR2(4000),
+    created_at   TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT PK_RAW_FILE_CELL PRIMARY KEY (cell_id)
+);
+
+CREATE SEQUENCE RAW_FILE_CELL_SEQ START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+
+CREATE INDEX IDX_RAW_FILE_CELL_UPLOAD ON RAW_FILE_CELL (upload_id, row_num);

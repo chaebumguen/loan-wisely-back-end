@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.product.mapper.ProductRateSnapshotMapper">
+
+    <resultMap id="ProductRateSnapshotResultMap" type="com.ccksy.loan.domain.product.entity.ProductRateSnapshot">
+        <id     property="rateId"    column="rate_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="rateMin"   column="rate_min"/>
+        <result property="rateMax"   column="rate_max"/>
+        <result property="scoreBase" column="score_base"/>
+        <result property="rateType"  column="rate_type"/>
+        <result property="asOfDate"  column="as_of_date"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="selectLatestByProductId" parameterType="long" resultMap="ProductRateSnapshotResultMap">
+        SELECT *
+          FROM (
+                SELECT *
+                  FROM PRODUCT_RATE_SNAPSHOT
+                 WHERE product_id = #{productId}
+                 ORDER BY as_of_date DESC, rate_id DESC
+          )
+         WHERE ROWNUM = 1
+    </select>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.product.entity.ProductRateSnapshot">
+        INSERT INTO PRODUCT_RATE_SNAPSHOT (
+            rate_id,
+            product_id,
+            rate_min,
+            rate_max,
+            score_base,
+            rate_type,
+            as_of_date,
+            created_at
+        ) VALUES (
+            PRODUCT_RATE_SNAPSHOT_SEQ.NEXTVAL,
+            #{productId},
+            #{rateMin},
+            #{rateMax},
+            #{scoreBase},
+            #{rateType},
+            #{asOfDate},
+            #{createdAt}
+        )
+    </insert>
+
+</mapper>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.user.auth.mapper.UserAuthMapper">
+
+    <resultMap id="UserAuthResultMap" type="com.ccksy.loan.domain.user.auth.entity.UserAuth">
+        <id     property="userId"       column="user_id"/>
+        <result property="username"     column="username"/>
+        <result property="passwordHash" column="password_hash"/>
+        <result property="status"       column="status"/>
+        <result property="failLoginCount" column="fail_login_count"/>
+        <result property="isLocked"     column="is_locked"/>
+        <result property="passwordUpdatedAt" column="password_updated_at"/>
+        <result property="createdAt"    column="created_at"/>
+        <result property="lastLoginAt"  column="last_login_at"/>
+    </resultMap>
+
+    <select id="selectByUsername" parameterType="string" resultMap="UserAuthResultMap">
+        SELECT *
+          FROM USER_AUTH
+         WHERE username = #{username}
+    </select>
+
+    <select id="selectByUserId" parameterType="long" resultMap="UserAuthResultMap">
+        SELECT *
+          FROM USER_AUTH
+         WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT USER_AUTH_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <insert id="insertUserAuth" parameterType="com.ccksy.loan.domain.user.auth.entity.UserAuth">
+        INSERT INTO USER_AUTH (
+            user_id,
+            username,
+            password_hash,
+            status,
+            fail_login_count,
+            is_locked,
+            password_updated_at,
+            created_at
+        ) VALUES (
+            #{userId},
+            #{username},
+            #{passwordHash},
+            #{status},
+            #{failLoginCount},
+            #{isLocked},
+            SYSTIMESTAMP,
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <update id="incrementFailLoginCount" parameterType="long">
+        UPDATE USER_AUTH
+           SET fail_login_count = NVL(fail_login_count, 0) + 1
+         WHERE user_id = #{userId}
+    </update>
+
+    <update id="resetFailLoginCount" parameterType="long">
+        UPDATE USER_AUTH
+           SET fail_login_count = 0
+         WHERE user_id = #{userId}
+    </update>
+
+    <update id="lockUser" parameterType="long">
+        UPDATE USER_AUTH
+           SET is_locked = 'Y'
+         WHERE user_id = #{userId}
+    </update>
+
+    <update id="updateLastLoginAt" parameterType="long">
+        UPDATE USER_AUTH
+           SET last_login_at = SYSTIMESTAMP
+         WHERE user_id = #{userId}
+    </update>
+
+</mapper>

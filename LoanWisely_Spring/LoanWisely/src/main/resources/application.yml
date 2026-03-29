@@ -1,0 +1,81 @@
+server:
+  port: 8080
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  application:
+    name: LoanWisely
+
+  datasource:
+    driver-class-name: oracle.jdbc.OracleDriver
+    url: jdbc:oracle:thin:@localhost:1521/XE
+    username: C##DEMONSTRATION
+    password: CCKSY
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    clean-disabled: false
+    clean-on-validation-error: false
+    validate-on-migrate: true
+    table: FLYWAY_SCHEMA_HISTORY
+    default-schema: C##DEMONSTRATION
+    schemas: C##DEMONSTRATION
+
+mybatis:
+  mapper-locations: classpath:mybatis/mapper/**/*.xml
+  type-aliases-package: com.ccksy.loan
+  configuration:
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: VARCHAR
+
+logging:
+  level:
+    root: INFO
+    com.ccksy.loan: DEBUG
+    com.ccksy.loan.domain.recommend: DEBUG
+    com.ccksy.loan.domain.recommend.process: DEBUG
+    com.ccksy.loan.domain.recommend.filter: DEBUG
+    org.mybatis: DEBUG
+
+security:
+  temp-api-key: "dev-temp-key"
+  admin-jwt-secret: "dev-admin-jwt-secret-please-change"
+  admin-jwt-issuer: "loanwisely-admin"
+  admin-jwt-ttl-secs: 10800
+  user-jwt-secret: "dev-user-jwt-secret-please-change"
+  user-jwt-issuer: "loanwisely-user"
+  user-jwt-ttl-secs: 3600
+  user-login-max-failures: 5
+  admin-username: "admin"
+  admin-password: "admin1234"
+  admin-roles: "SUPER_ADMIN,POLICY_WRITER,POLICY_APPROVER"
+
+storage:
+  raw-files-dir: "./storage/raw-files"
+  raw-files-schema-path: "./storage/raw-files/schema.json"
+  explain-dir: "./storage/explain"
+
+product:
+  external:
+    fss:
+      credit-url: "https://finlife.fss.or.kr/finlifeapi/creditLoanProductsSearch.json"
+      mortgage-url: "https://finlife.fss.or.kr/finlifeapi/mortgageLoanProductsSearch.json"
+      rent-url: "https://finlife.fss.or.kr/finlifeapi/rentHouseLoanProductsSearch.json"
+      api-key: "5322863ea75d0222687479c0f1b15b30"
+      api-key-param: "auth"
+      response-type: "json"
+      top-fin-grp-nos: ""
+      top-fin-grp-nos-credit: "020000,030200,050000,060000"
+      top-fin-grp-nos-mortgage: "020000,030200,050000,060000"
+      top-fin-grp-nos-rent: "020000,030200,050000,060000"
+      page-no: "1"
+      finance-cd: ""

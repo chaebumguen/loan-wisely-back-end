@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.recommend.mapper.RecoRejectLogMapper">
+
+    <resultMap id="RecoRejectLogResultMap" type="com.ccksy.loan.domain.recommend.entity.RecoRejectLog">
+        <id     property="rejectId"    column="reject_id"/>
+        <result property="requestId"   column="request_id"/>
+        <result property="productId"   column="product_id"/>
+        <result property="rejectCode"  column="reject_code"/>
+        <result property="rejectReason" column="reject_reason"/>
+        <result property="createdAt"   column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.recommend.entity.RecoRejectLog">
+        INSERT INTO RECO_REJECT_LOG (
+            reject_id,
+            request_id,
+            product_id,
+            reject_code,
+            reject_reason,
+            created_at
+        ) VALUES (
+            RECO_REJECT_LOG_SEQ.NEXTVAL,
+            #{requestId},
+            #{productId},
+            #{rejectCode},
+            #{rejectReason},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectByRequestId" parameterType="long" resultMap="RecoRejectLogResultMap">
+        SELECT *
+          FROM RECO_REJECT_LOG
+         WHERE request_id = #{requestId}
+         ORDER BY created_at DESC, reject_id DESC
+    </select>
+
+</mapper>

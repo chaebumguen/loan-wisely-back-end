@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.recommend.mapper.RecoExclusionReasonMapper">
+
+    <resultMap id="RecoExclusionReasonResultMap" type="com.ccksy.loan.domain.recommend.entity.RecoExclusionReason">
+        <id     property="reasonId"  column="reason_id"/>
+        <result property="resultId"  column="result_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="reasonCode" column="reason_code"/>
+        <result property="reasonText" column="reason_text"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.recommend.entity.RecoExclusionReason">
+        INSERT INTO RECO_EXCLUSION_REASON (
+            reason_id,
+            result_id,
+            product_id,
+            reason_code,
+            reason_text,
+            created_at
+        ) VALUES (
+            RECO_EXCLUSION_REASON_SEQ.NEXTVAL,
+            #{resultId},
+            #{productId},
+            #{reasonCode},
+            #{reasonText},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectByResultId" parameterType="long" resultMap="RecoExclusionReasonResultMap">
+        SELECT *
+          FROM RECO_EXCLUSION_REASON
+         WHERE result_id = #{resultId}
+         ORDER BY created_at DESC, reason_id DESC
+    </select>
+
+</mapper>

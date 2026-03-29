@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.metadata.mapper.CodeDictionaryVersionMapper">
+
+    <resultMap id="CodeDictionaryVersionResultMap" type="com.ccksy.loan.domain.metadata.entity.CodeDictionaryVersion">
+        <id     property="versionId"   column="version_id"/>
+        <result property="uploadId"    column="upload_id"/>
+        <result property="versionLabel" column="version_label"/>
+        <result property="status"      column="status"/>
+        <result property="approvedAt"  column="approved_at"/>
+        <result property="approvedBy"  column="approved_by"/>
+        <result property="isActive"    column="is_active"/>
+        <result property="createdAt"   column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.metadata.entity.CodeDictionaryVersion">
+        INSERT INTO CODE_DICTIONARY_VERSION (
+            version_id,
+            upload_id,
+            version_label,
+            status,
+            approved_at,
+            approved_by,
+            is_active,
+            created_at
+        ) VALUES (
+            #{versionId},
+            #{uploadId},
+            #{versionLabel},
+            #{status},
+            #{approvedAt},
+            #{approvedBy},
+            #{isActive},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectNextId" resultType="long">
+        SELECT CODE_DICTIONARY_VERSION_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <select id="selectById" parameterType="long" resultMap="CodeDictionaryVersionResultMap">
+        SELECT *
+          FROM CODE_DICTIONARY_VERSION
+         WHERE version_id = #{versionId}
+    </select>
+
+    <!-- 임시: 최신 버전 조회 (승인/활성 플래그 전제 X) -->
+    <select id="selectLatest" resultMap="CodeDictionaryVersionResultMap">
+        SELECT *
+          FROM CODE_DICTIONARY_VERSION
+         ORDER BY created_at DESC, version_id DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 활성/승인 버전 조회 -->
+    <select id="selectActive" resultMap="CodeDictionaryVersionResultMap">
+        SELECT *
+          FROM CODE_DICTIONARY_VERSION
+         WHERE is_active = 'Y'
+           AND status = 'APPROVED'
+         ORDER BY approved_at DESC, version_id DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <select id="selectAll" resultMap="CodeDictionaryVersionResultMap">
+        SELECT *
+          FROM CODE_DICTIONARY_VERSION
+         ORDER BY created_at DESC, version_id DESC
+    </select>
+
+    <update id="updateStatus">
+        UPDATE CODE_DICTIONARY_VERSION
+           SET status = #{status},
+               approved_by = #{approvedBy},
+               approved_at = #{approvedAt},
+               is_active = #{isActive}
+         WHERE version_id = #{versionId}
+    </update>
+
+    <update id="deactivateAll">
+        UPDATE CODE_DICTIONARY_VERSION
+           SET is_active = 'N'
+         WHERE is_active = 'Y'
+    </update>
+
+</mapper>

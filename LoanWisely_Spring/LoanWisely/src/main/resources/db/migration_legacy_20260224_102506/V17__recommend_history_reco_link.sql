@@ -1,0 +1,7 @@
+ALTER TABLE RECOMMEND_HISTORY ADD (
+    reco_request_id NUMBER,
+    reco_result_id  NUMBER
+);
+
+CREATE INDEX IDX_RECOMMEND_HISTORY_RECO_RESULT
+    ON RECOMMEND_HISTORY (reco_result_id);

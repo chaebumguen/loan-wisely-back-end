@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.user.mapper.UserCreditLv3Mapper">
+
+    <resultMap id="UserCreditLv3ResultMap" type="com.ccksy.loan.domain.user.entity.UserCreditLv3">
+        <id     property="lv3Id"             column="lv3_id"/>
+        <result property="userId"            column="user_id"/>
+        <result property="loanPurpose"       column="loan_purpose"/>
+        <result property="totalDebt"         column="total_debt"/>
+        <result property="existingLoanCount" column="existing_loan_count"/>
+        <result property="isActive"          column="is_active"/>
+        <result property="createdAt"         column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.user.entity.UserCreditLv3">
+        INSERT INTO USER_CREDIT_LV3 (
+            lv3_id,
+            user_id,
+            loan_purpose,
+            total_debt,
+            existing_loan_count,
+            is_active,
+            created_at
+        ) VALUES (
+            #{lv3Id},
+            #{userId},
+            #{loanPurpose},
+            #{totalDebt},
+            #{existingLoanCount},
+            #{isActive},
+            #{createdAt}
+        )
+    </insert>
+
+    <update id="deactivateActiveByUserId" parameterType="long">
+        UPDATE USER_CREDIT_LV3
+           SET is_active = 'N'
+         WHERE user_id = #{userId}
+           AND is_active = 'Y'
+    </update>
+
+    <select id="selectLatestActiveByUserId" parameterType="long" resultMap="UserCreditLv3ResultMap">
+        SELECT *
+          FROM USER_CREDIT_LV3
+         WHERE user_id = #{userId}
+           AND is_active = 'Y'
+         ORDER BY created_at DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <select id="selectHistoryByUserId" parameterType="long" resultMap="UserCreditLv3ResultMap">
+        SELECT *
+          FROM USER_CREDIT_LV3
+         WHERE user_id = #{userId}
+         ORDER BY created_at DESC
+    </select>
+
+    <select id="selectNextId" resultType="long">
+        SELECT USER_CREDIT_LV3_SEQ.NEXTVAL FROM dual
+    </select>
+
+</mapper>

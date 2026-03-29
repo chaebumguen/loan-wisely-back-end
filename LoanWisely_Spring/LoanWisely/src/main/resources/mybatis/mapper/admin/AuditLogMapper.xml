@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.admin.audit.mapper.AuditLogMapper">
+
+    <resultMap id="AuditLogResultMap" type="com.ccksy.loan.domain.admin.audit.entity.AuditLog">
+        <id     property="auditId"  column="audit_id"/>
+        <result property="actorId"  column="actor_id"/>
+        <result property="actorRoles" column="actor_roles"/>
+        <result property="action"   column="action"/>
+        <result property="target"   column="target"/>
+        <result property="detailJson" column="detail_json"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.admin.audit.entity.AuditLog">
+        INSERT INTO AUDIT_LOG (
+            audit_id,
+            actor_id,
+            actor_roles,
+            action,
+            target,
+            detail_json,
+            created_at
+        ) VALUES (
+            #{auditId},
+            #{actorId},
+            #{actorRoles},
+            #{action},
+            #{target},
+            #{detailJson},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectNextId" resultType="long">
+        SELECT AUDIT_LOG_SEQ.NEXTVAL FROM dual
+    </select>
+
+    <select id="selectAll" resultMap="AuditLogResultMap">
+        SELECT *
+          FROM AUDIT_LOG
+         ORDER BY created_at DESC, audit_id DESC
+    </select>
+
+</mapper>

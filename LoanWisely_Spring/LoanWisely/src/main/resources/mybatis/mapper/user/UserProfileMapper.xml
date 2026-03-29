@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.user.mapper.UserProfileMapper">
+
+    <!--
+      UserProfile Entity 기준 매핑
+      - snake_case 컬럼명을 명시적으로 camelCase 프로퍼티에 매핑 (환경설정 의존 제거)
+    -->
+    <resultMap id="UserProfileResultMap" type="com.ccksy.loan.domain.user.entity.UserProfile">
+        <id     property="profileId"         column="profile_id"/>
+        <result property="userId"            column="user_id"/>
+        <result property="inputLevel"        column="input_level"/>
+
+        <result property="age"               column="age"/>
+        <result property="incomeYear"        column="income_year"/>
+        <result property="gender"            column="gender"/>
+
+        <result property="employmentType"    column="employment_type"/>
+        <result property="residenceType"     column="residence_type"/>
+
+        <result property="debtTotal"         column="debt_total"/>
+        <result property="existingLoanCount" column="existing_loan_count"/>
+        <result property="loanPurpose"       column="loan_purpose"/>
+
+        <result property="inputStateCode"    column="input_state_code"/>
+        <result property="isActive"          column="is_active"/>
+        <result property="createdAt"         column="created_at"/>
+    </resultMap>
+
+    <!-- 신규 이력 INSERT (이력 불변 원칙) -->
+    <insert id="insertUserProfile" parameterType="com.ccksy.loan.domain.user.entity.UserProfile">
+        INSERT INTO USER_PROFILE (
+            profile_id,
+            user_id,
+            input_level,
+            age,
+            income_year,
+            gender,
+            employment_type,
+            residence_type,
+            debt_total,
+            existing_loan_count,
+            loan_purpose,
+            input_state_code,
+            is_active,
+            created_at
+        ) VALUES (
+            USER_PROFILE_SEQ.NEXTVAL,
+            #{userId},
+            #{inputLevel},
+            #{age},
+            #{incomeYear},
+            #{gender},
+            #{employmentType},
+            #{residenceType},
+            #{debtTotal},
+            #{existingLoanCount},
+            #{loanPurpose},
+            #{inputStateCode},
+            #{isActive},
+            #{createdAt}
+        )
+    </insert>
+
+    <!-- 기존 유효 레코드 비활성화 -->
+    <update id="deactivateActiveByUserId" parameterType="map">
+        UPDATE USER_PROFILE
+           SET is_active = 'N'
+         WHERE user_id = #{userId}
+           AND is_active = 'Y'
+    </update>
+
+    <!-- 최신 유효 1건 조회 -->
+    <select id="selectLatestActiveByUserId" parameterType="long" resultMap="UserProfileResultMap">
+        SELECT *
+          FROM USER_PROFILE
+         WHERE user_id = #{userId}
+           AND is_active = 'Y'
+         ORDER BY created_at DESC, profile_id DESC
+         FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 이력 전체 조회 -->
+    <select id="selectHistoryByUserId" parameterType="long" resultMap="UserProfileResultMap">
+        SELECT *
+          FROM USER_PROFILE
+         WHERE user_id = #{userId}
+         ORDER BY created_at DESC, profile_id DESC
+    </select>
+
+</mapper>

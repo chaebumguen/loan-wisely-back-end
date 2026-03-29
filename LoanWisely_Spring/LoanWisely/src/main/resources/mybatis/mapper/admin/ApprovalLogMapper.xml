@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ccksy.loan.domain.admin.approval.mapper.ApprovalLogMapper">
+
+    <insert id="insert" parameterType="com.ccksy.loan.domain.admin.approval.entity.ApprovalLog">
+        INSERT INTO APPROVAL_LOG (
+            approval_id,
+            target_id,
+            action,
+            reason,
+            actor_id,
+            created_at
+        ) VALUES (
+            #{approvalId},
+            #{targetId},
+            #{action},
+            #{reason},
+            #{actorId},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectNextId" resultType="long">
+        SELECT APPROVAL_LOG_SEQ.NEXTVAL FROM dual
+    </select>
+
+</mapper>
