@@ -16,6 +16,7 @@ Spring Boot 기반으로 구성되어 있습니다.
 validate → filter → score → sort
 
 Backend 구조 (Spring)
+
 domain
 - user
 - product
