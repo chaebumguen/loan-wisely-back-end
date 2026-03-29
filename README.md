@@ -17,10 +17,10 @@ validate → filter → score → sort
 
 Backend 구조 (Spring)
 domain
- ├─ user
- ├─ product
- ├─ consent
- └─ recommend
+- user
+- product
+- consent
+- recommend
 
 이 프로젝트는 단순 CRUD 서비스를 넘어
 금융 의사결정 지원 시스템을 목표로 합니다.
